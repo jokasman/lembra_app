@@ -1,0 +1,16 @@
+<resources>
+    <color name="bg">#ECEEF4</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="cardStroke">#DDE1EA</color>
+    <color name="text">#1B1D23</color>
+    <color name="text2">#5F6675</color>
+    <color name="accent">#3D5AFE</color>
+    <color name="accentSoft">#E3E8FF</color>
+    <color name="onAccent">#FFFFFF</color>
+    <color name="danger">#E53935</color>
+    <color name="dangerSoft">#FDECEC</color>
+    <color name="divider">#E4E7EE</color>
+    <color name="chip">#EEF0F5</color>
+    <color name="warnSoft">#FFF4DD</color>
+    <color name="warn">#9A6400</color>
+</resources>

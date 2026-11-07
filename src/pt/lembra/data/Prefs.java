@@ -1,0 +1,57 @@
+package pt.lembra.data;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+/** Definições do utilizador. */
+public final class Prefs {
+    private Prefs() {}
+
+    private static SharedPreferences sp(Context c) { return c.getSharedPreferences("lembra", Context.MODE_PRIVATE); }
+
+    public static int quickSnooze(Context c) { return sp(c).getInt("quick_snooze", 10); }
+    public static void setQuickSnooze(Context c, int v) { sp(c).edit().putInt("quick_snooze", v).apply(); }
+
+    public static int nagInterval(Context c) { return sp(c).getInt("nag_interval", 5); }
+    public static void setNagInterval(Context c, int v) { sp(c).edit().putInt("nag_interval", v).apply(); }
+
+    /** Hora por defeito quando só é indicada a data (minutos desde a meia-noite). */
+    public static int defaultTime(Context c) { return sp(c).getInt("default_time", 9 * 60); }
+    public static void setDefaultTime(Context c, int v) { sp(c).edit().putInt("default_time", v).apply(); }
+
+    public static int defaultPreAlert(Context c) { return sp(c).getInt("default_pre", 0); }
+    public static void setDefaultPreAlert(Context c, int v) { sp(c).edit().putInt("default_pre", v).apply(); }
+
+    /** Margem (min) para considerar dois lembretes coincidentes; -1 = não avisar. */
+    public static int conflictTolerance(Context c) { return sp(c).getInt("conflict_tol", 0); }
+    public static void setConflictTolerance(Context c, int v) { sp(c).edit().putInt("conflict_tol", v).apply(); }
+
+    public static boolean alarmDefault(Context c) { return sp(c).getBoolean("alarm_default", true); }
+    public static void setAlarmDefault(Context c, boolean v) { sp(c).edit().putBoolean("alarm_default", v).apply(); }
+
+    /** Duração máxima do toque do despertador (min). */
+    public static int ringMinutes(Context c) { return sp(c).getInt("ring_min", 5); }
+    public static void setRingMinutes(Context c, int v) { sp(c).edit().putInt("ring_min", v).apply(); }
+
+    /** Som do despertador (URI) ou null para o alarme por defeito do sistema. */
+    public static String alarmSound(Context c) { return sp(c).getString("alarm_sound", null); }
+    public static void setAlarmSound(Context c, String v) { sp(c).edit().putString("alarm_sound", v).apply(); }
+
+    /** Volume próprio do despertador, em % (10–100), independente do volume de alarme do sistema. */
+    public static int alarmVolume(Context c) { return sp(c).getInt("alarm_volume", 80); }
+    public static void setAlarmVolume(Context c, int v) { sp(c).edit().putInt("alarm_volume", Math.max(10, Math.min(100, v))).apply(); }
+
+    /** Começar baixo e aumentar até ao volume escolhido. */
+    public static boolean crescendo(Context c) { return sp(c).getBoolean("crescendo", true); }
+    public static void setCrescendo(Context c, boolean v) { sp(c).edit().putBoolean("crescendo", v).apply(); }
+
+    /** 0 = automático (segue o sistema), 1 = claro, 2 = escuro. */
+    public static int theme(Context c) { return sp(c).getInt("theme", 0); }
+    public static void setTheme(Context c, int v) { sp(c).edit().putInt("theme", v).apply(); }
+
+    public static String str(Context c, String key) { return sp(c).getString(key, null); }
+    public static void setStr(Context c, String key, String v) { sp(c).edit().putString(key, v).apply(); }
+
+    public static boolean flag(Context c, String key) { return sp(c).getBoolean(key, false); }
+    public static void setFlag(Context c, String key) { sp(c).edit().putBoolean(key, true).apply(); }
+}

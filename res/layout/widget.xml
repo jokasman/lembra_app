@@ -1,0 +1,27 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_bg" android:padding="14dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/header" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Lembra" android:textStyle="bold" android:textSize="16sp" android:textColor="@color/text"/>
+        <ImageView android:id="@+id/add" android:layout_width="32dp" android:layout_height="32dp" android:padding="6dp" android:src="@drawable/ic_add" android:tint="@color/onAccent" android:background="@drawable/widget_add_bg" android:contentDescription="Novo lembrete"/>
+    </LinearLayout>
+    <TextView android:id="@+id/empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Sem lembretes pendentes 🎉" android:textColor="@color/text2" android:textSize="13sp"/>
+    <LinearLayout android:id="@+id/row0" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="5dp" android:paddingBottom="5dp" android:gravity="center_vertical" android:visibility="gone">
+        <TextView android:id="@+id/dot0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="●" android:textSize="10sp" android:layout_marginEnd="8dp" android:textColor="@color/accent"/>
+        <TextView android:id="@+id/title0" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="@color/text" android:textSize="14sp" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/time0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text2" android:textSize="12sp" android:layout_marginStart="8dp"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/row1" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="5dp" android:paddingBottom="5dp" android:gravity="center_vertical" android:visibility="gone">
+        <TextView android:id="@+id/dot1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="●" android:textSize="10sp" android:layout_marginEnd="8dp" android:textColor="@color/accent"/>
+        <TextView android:id="@+id/title1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="@color/text" android:textSize="14sp" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/time1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text2" android:textSize="12sp" android:layout_marginStart="8dp"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/row2" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="5dp" android:paddingBottom="5dp" android:gravity="center_vertical" android:visibility="gone">
+        <TextView android:id="@+id/dot2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="●" android:textSize="10sp" android:layout_marginEnd="8dp" android:textColor="@color/accent"/>
+        <TextView android:id="@+id/title2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="@color/text" android:textSize="14sp" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/time2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text2" android:textSize="12sp" android:layout_marginStart="8dp"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/row3" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="5dp" android:paddingBottom="5dp" android:gravity="center_vertical" android:visibility="gone">
+        <TextView android:id="@+id/dot3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="●" android:textSize="10sp" android:layout_marginEnd="8dp" android:textColor="@color/accent"/>
+        <TextView android:id="@+id/title3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="@color/text" android:textSize="14sp" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/time3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text2" android:textSize="12sp" android:layout_marginStart="8dp"/>
+    </LinearLayout>
+</LinearLayout>

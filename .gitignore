@@ -1,0 +1,8 @@
+# Resultados da compilação
+build/
+*.apk
+*.dex
+
+# Chave de assinatura: NUNCA publicar (guarde-a num local seguro)
+*.jks
+*.keystore

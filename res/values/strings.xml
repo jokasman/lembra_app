@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Lembra</string>
+    <string name="widget_desc">Próximos lembretes</string>
+</resources>
