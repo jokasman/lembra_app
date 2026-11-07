@@ -66,6 +66,9 @@ public class NextWidget extends AppWidgetProvider {
         Intent add = new Intent(ctx, MainActivity.class).putExtra("focusQuick", true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         v.setOnClickPendingIntent(R.id.add, PendingIntent.getActivity(ctx, 4001, add, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        Intent voice = new Intent(ctx, MainActivity.class).putExtra("startVoice", true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        v.setOnClickPendingIntent(R.id.voice, PendingIntent.getActivity(ctx, 4002, voice, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         m.updateAppWidget(ids, v);
     }
 }

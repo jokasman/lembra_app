@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -31,6 +32,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
@@ -54,6 +56,7 @@ import pt.lembra.data.Prefs;
 /** Ecrã principal: entrada rápida, filtros e lista agrupada de lembretes. */
 public class MainActivity extends BaseActivity {
     static final int F_ALL = 0, F_TODAY = 1, F_IMPORTANT = 2, F_RECURRING = 3, F_DONE = 4, F_CAT = 100;
+    private static final int REQ_VOICE_NOTE = 7411;
 
     private ListView list;
     private Adapter adapter;
@@ -92,6 +95,14 @@ public class MainActivity extends BaseActivity {
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); handleIntent(intent); }
 
     private void handleIntent(Intent i) {
+        if (i != null && i.getBooleanExtra("startVoice", false)) {
+            i.removeExtra("startVoice");
+            // First-run welcome and permission dialogs take priority; the mic stays available afterwards.
+            if (Prefs.flag(this, "welcome")) {
+                quick.postDelayed(new Runnable() { public void run() { startVoiceCapture(); } }, 350);
+            }
+            return;
+        }
         if (i != null && i.getBooleanExtra("focusQuick", false)) {
             quick.requestFocus();
             quick.postDelayed(new Runnable() { public void run() {
@@ -191,6 +202,10 @@ public class MainActivity extends BaseActivity {
             public void onClick(View v) { openEditorFromQuick(); }
         });
         qrow.addView(tune);
+        ImageView voice = Ui.iconButton(this, R.drawable.ic_mic, "Adicionar nota por voz", new View.OnClickListener() {
+            public void onClick(View v) { startVoiceCapture(); }
+        });
+        qrow.addView(voice);
         ImageView send = Ui.icon(this, R.drawable.ic_send, R.color.onAccent, 40, 9);
         GradientDrawable sbg = new GradientDrawable();
         sbg.setShape(GradientDrawable.OVAL);
@@ -483,6 +498,46 @@ public class MainActivity extends BaseActivity {
         final long newId = r.id;
         ConflictDialog.check(this, r, null, new Runnable() { public void run() { openEditor(newId); } });
         undoIsDelete = true;
+    }
+
+    private void startVoiceCapture() {
+        Intent speech = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        speech.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speech.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-PT");
+        speech.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-PT");
+        speech.putExtra(RecognizerIntent.EXTRA_PROMPT, "Diga a nota e, se quiser, quando deve tocar");
+        speech.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        try {
+            startActivityForResult(speech, REQ_VOICE_NOTE);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "Voz indisponível. Pode escrever a nota na caixa rápida.", Toast.LENGTH_LONG).show();
+            quick.requestFocus();
+            ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(quick, InputMethodManager.SHOW_IMPLICIT);
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_VOICE_NOTE || resultCode != RESULT_OK || data == null) return;
+        ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+        if (matches == null || matches.isEmpty() || matches.get(0) == null || matches.get(0).trim().isEmpty()) {
+            Toast.makeText(this, "Não consegui reconhecer a nota. Tente novamente ou escreva-a.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        saveVoiceNote(matches.get(0).trim());
+    }
+
+    private void saveVoiceNote(String spoken) {
+        long now = System.currentTimeMillis();
+        int def = Prefs.defaultTime(this);
+        QuickParser.Result parsed = QuickParser.parse(spoken, now, def / 60, def % 60);
+        Reminder r = parsed.toReminder();
+        r.title = parsed.title == null || parsed.title.trim().isEmpty() ? spoken : parsed.title.trim();
+        if (parsed.dueAt == null) r.dueAt = now + 60 * 60 * 1000L;
+        r.preAlertMin = Prefs.defaultPreAlert(this);
+        r.alarm = Prefs.alarmDefault(this);
+        Engine.save(this, r);
+        Toast.makeText(this, "Nota guardada · " + Fmt.dayTime(r.effectiveTime(), now), Toast.LENGTH_LONG).show();
     }
 
     private void openEditorFromQuick() {
