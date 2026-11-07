@@ -45,6 +45,16 @@ public final class Prefs {
     public static boolean crescendo(Context c) { return sp(c).getBoolean("crescendo", true); }
     public static void setCrescendo(Context c, boolean v) { sp(c).edit().putBoolean("crescendo", v).apply(); }
 
+    /** Pausa única dos despertadores, guardada como instantes epoch em milissegundos. */
+    public static long quietStart(Context c) { return sp(c).getLong("alarm_quiet_start", 0L); }
+    public static long quietEnd(Context c) { return sp(c).getLong("alarm_quiet_end", 0L); }
+    public static void setQuietPeriod(Context c, long start, long end) {
+        sp(c).edit().putLong("alarm_quiet_start", start).putLong("alarm_quiet_end", end).apply();
+    }
+    public static void clearQuietPeriod(Context c) {
+        sp(c).edit().remove("alarm_quiet_start").remove("alarm_quiet_end").apply();
+    }
+
     /** 0 = automático (segue o sistema), 1 = claro, 2 = escuro. */
     public static int theme(Context c) { return sp(c).getInt("theme", 0); }
     public static void setTheme(Context c, int v) { sp(c).edit().putInt("theme", v).apply(); }

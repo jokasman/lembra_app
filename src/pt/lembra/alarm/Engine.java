@@ -115,6 +115,7 @@ public final class Engine {
     }
 
     public static void rescheduleAll(Context ctx) {
+        QuietPeriod.reschedule(ctx);
         for (Reminder r : Db.get(ctx).all()) if (!r.done) schedule(ctx, r);
         changed(ctx);
     }
@@ -195,6 +196,8 @@ public final class Engine {
     public static void fire(Context ctx, Reminder r) {
         long now = System.currentTimeMillis();
         if (r.done) return;
+        // The end boundary releases every due alarm in order; leave reminder state untouched here.
+        if (r.alarm && QuietPeriod.isActive(ctx)) return;
         if (r.notified && r.isRecurring()) {
             // A ocorrência anterior ficou por tratar e chegou a seguinte: avança.
             Db.get(ctx).log(r, Db.H_MISSED);

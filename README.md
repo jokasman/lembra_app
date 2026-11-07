@@ -9,6 +9,7 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Despertador**: toca com som de alarme mesmo em silêncio, em ecrã inteiro, com volume próprio que vai aumentando. Só pára quando marca como feito ou adia.
 - **Ecrã do despertador**: o conteúdo e as checklists grandes deslizam sem ocultar os botões de ação.
 - **Relógio Wear OS**: recebe uma notificação do alarme com ações para adiar pelo intervalo rápido configurado ou parar marcando o lembrete como feito.
+- **Pausa de alarmes**: define uma única janela com data e hora de início e fim; os despertadores vencidos durante a pausa tocam em fila depois do fim.
 - **Nada fica esquecido**: ao desbloquear o telemóvel aparece o ecrã "Por tratar".
 - **Lembretes por localização**: avisa ao chegar ou ao sair de um local guardado. Usa só o Android, sem serviços Google.
 - **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.

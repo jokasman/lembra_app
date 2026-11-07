@@ -2,6 +2,7 @@ package pt.lembra.ui;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.app.NotificationManager;
 import android.app.TimePickerDialog;
 import android.content.DialogInterface;
@@ -24,11 +25,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Locale;
 
 import pt.lembra.R;
 import pt.lembra.alarm.Engine;
 import pt.lembra.alarm.AlarmReceiver;
+import pt.lembra.alarm.QuietPeriod;
 import pt.lembra.core.Categories;
 import pt.lembra.core.Fmt;
 import pt.lembra.data.Db;
@@ -154,6 +159,9 @@ public class SettingsActivity extends BaseActivity {
         // ---- Preferências
         LinearLayout pref = Ui.card(this);
         pref.addView(Ui.sectionLabel(this, "Preferências"));
+        pref.addView(Ui.optionRow(this, "Pausa de alarmes", quietPeriodText(), new View.OnClickListener() {
+            public void onClick(View v) { editQuietPeriod(); }
+        }));
         pref.addView(Ui.optionRow(this, "Adiamento rápido na notificação", "+" + Fmt.duration(Prefs.quickSnooze(this)), new View.OnClickListener() {
             public void onClick(View v) {
                 final int[] vals = {5, 10, 15, 30, 60};
@@ -446,6 +454,80 @@ public class SettingsActivity extends BaseActivity {
     }
 
     interface Chosen { void on(int v); }
+
+    private String quietPeriodText() {
+        long start = Prefs.quietStart(this), end = Prefs.quietEnd(this);
+        if (start <= 0 || end <= start || end <= System.currentTimeMillis()) return "Desativada";
+        String state = QuietPeriod.isActive(this) ? "Ativa" : "Programada";
+        return state + ": " + quietDateTime(start) + " – " + quietDateTime(end);
+    }
+
+    private String quietDateTime(long millis) {
+        LocalDateTime d = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), ZoneId.systemDefault());
+        return String.format(Locale.ROOT, "%02d/%02d %02d:%02d", d.getDayOfMonth(), d.getMonthValue(), d.getHour(), d.getMinute());
+    }
+
+    private void editQuietPeriod() {
+        long savedStart = Prefs.quietStart(this), savedEnd = Prefs.quietEnd(this);
+        final long start = savedEnd > System.currentTimeMillis() ? savedStart : 0;
+        final long end = start > 0 ? savedEnd : 0;
+        AlertDialog.Builder b = new AlertDialog.Builder(this).setTitle("Pausa de alarmes")
+                .setMessage("Os lembretes configurados como despertador não tocam neste intervalo. Quando terminar, os alarmes atrasados tocam em fila.")
+                .setPositiveButton("Definir período", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int which) { chooseQuietStart(start, end); }
+                }).setNegativeButton("Cancelar", null);
+        if (start > 0 && end > System.currentTimeMillis()) {
+            b.setNeutralButton("Desativar", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface d, int which) { QuietPeriod.clear(SettingsActivity.this); build(); }
+            });
+        }
+        b.show();
+    }
+
+    private void chooseQuietStart(long previousStart, final long previousEnd) {
+        long initial = previousStart > 0 ? previousStart : System.currentTimeMillis();
+        chooseDateTime("Dia e hora de início", localDateTime(initial), new DateTimeChosen() {
+            public void on(long start) {
+                long initialEnd = previousEnd > start ? previousEnd : start + 60 * 60000L;
+                chooseQuietEnd(start, initialEnd);
+            }
+        });
+    }
+
+    private void chooseQuietEnd(final long start, long initialEnd) {
+        chooseDateTime("Dia e hora de fim", localDateTime(initialEnd), new DateTimeChosen() {
+            public void on(long end) {
+                if (end <= start || end <= System.currentTimeMillis()) {
+                    Toast.makeText(SettingsActivity.this, "O fim tem de ser posterior ao início e estar no futuro", Toast.LENGTH_LONG).show();
+                    chooseQuietEnd(start, Math.max(start, System.currentTimeMillis()) + 60 * 60000L);
+                    return;
+                }
+                QuietPeriod.set(SettingsActivity.this, start, end);
+                build();
+            }
+        });
+    }
+
+    private LocalDateTime localDateTime(long millis) {
+        return LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), ZoneId.systemDefault());
+    }
+
+    private void chooseDateTime(String title, final LocalDateTime initial, final DateTimeChosen cb) {
+        new DatePickerDialog(this, new DatePickerDialog.OnDateSetListener() {
+            public void onDateSet(android.widget.DatePicker view, int year, int month, int day) {
+                final LocalDate date = LocalDate.of(year, month + 1, day);
+                new TimePickerDialog(SettingsActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                    public void onTimeSet(TimePicker view, int hour, int minute) {
+                        long value = LocalDateTime.of(date, LocalTime.of(hour, minute)).atZone(ZoneId.systemDefault())
+                                .toInstant().toEpochMilli();
+                        cb.on(value);
+                    }
+                }, initial.getHour(), initial.getMinute(), true).show();
+            }
+        }, initial.getYear(), initial.getMonthValue() - 1, initial.getDayOfMonth()).show();
+    }
+
+    interface DateTimeChosen { void on(long millis); }
 
     private void choose(String title, final int[] vals, int current, final Chosen cb) {
         String[] labels = new String[vals.length];

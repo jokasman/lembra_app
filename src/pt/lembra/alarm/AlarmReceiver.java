@@ -22,6 +22,8 @@ public class AlarmReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context ctx, Intent intent) {
         String a = intent.getAction();
         long id = intent.getLongExtra("id", -1);
+        if (QuietPeriod.A_START.equals(a)) { QuietPeriod.onStart(ctx); return; }
+        if (QuietPeriod.A_END.equals(a)) { QuietPeriod.onEnd(ctx); return; }
         if (A_TEST.equals(a)) { AlarmService.start(ctx, AlarmService.TEST_ID); return; }
         if (Engine.A_STOP.equals(a)) { AlarmService.stop(null); return; }
         if (a == null || id < 0) return;
@@ -32,7 +34,14 @@ public class AlarmReceiver extends BroadcastReceiver {
                 boolean entering = intent.getBooleanExtra(android.location.LocationManager.KEY_PROXIMITY_ENTERING, false);
                 if (r.done || !r.isLocation() || r.notified || r.isSnoozed()) break;
                 boolean match = (entering && r.locTrigger == Reminder.LOC_ARRIVE) || (!entering && r.locTrigger == Reminder.LOC_LEAVE);
-                if (match && !Geo.justRegistered(ctx, r.id)) Engine.fire(ctx, r);
+                if (match && !Geo.justRegistered(ctx, r.id)) {
+                    if (r.alarm && QuietPeriod.isActive(ctx)) {
+                        r.snoozedUntil = QuietPeriod.end(ctx);
+                        r.preNotified = true;
+                        Db.get(ctx).save(r);
+                        Engine.schedule(ctx, r);
+                    } else Engine.fire(ctx, r);
+                }
                 break;
             }
             case Engine.A_FIRE:
@@ -40,6 +49,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                 break;
             case Engine.A_PRE:
                 if (!r.done && !r.notified) {
+                    if (r.alarm && QuietPeriod.isActive(ctx)) break;
                     r.preNotified = true;
                     Db.get(ctx).save(r);
                     Notifier.showPre(ctx, r);
@@ -47,6 +57,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                 break;
             case Engine.A_NAG:
                 if (!r.done && r.notified && r.important) {
+                    if (r.alarm && QuietPeriod.isActive(ctx)) break;
                     if (r.alarm) AlarmService.start(ctx, r.id); else Notifier.showMain(ctx, r, true);
                     Engine.schedule(ctx, r);
                 }

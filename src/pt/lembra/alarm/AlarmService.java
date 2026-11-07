@@ -54,6 +54,7 @@ public class AlarmService extends Service {
 
     private static AlarmService instance;
     private long currentId = NONE;
+    private final List<Long> ringQueue = new ArrayList<Long>();
     private boolean paused;
     private MediaPlayer player;
     private Vibrator vibrator;
@@ -80,7 +81,15 @@ public class AlarmService extends Service {
     /** Pára o toque (ação do utilizador: Feito, Adiar…). id == null pára qualquer toque. */
     public static void stop(Long id) {
         AlarmService s = instance;
-        if (s != null && s.currentId != NONE && (id == null || s.currentId == id)) s.stopRinging();
+        if (s == null) return;
+        if (id != null && s.currentId != id) { s.dequeue(id); return; }
+        if (s.currentId != NONE) s.stopRinging();
+    }
+
+    /** Interrompe o alarme atual no início do período silencioso e volta a pô-lo na fila. */
+    public static void deferForQuiet() {
+        AlarmService s = instance;
+        if (s != null) s.deferCurrentForQuiet();
     }
 
     /** Silencia temporariamente enquanto o utilizador escolhe a nova data (o alarme continua ativo). */
@@ -120,6 +129,7 @@ public class AlarmService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         instance = this;
+        restoreRingQueue();
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_USER_PRESENT);
         f.addAction(Intent.ACTION_SCREEN_ON);
@@ -145,8 +155,14 @@ public class AlarmService extends Service {
             long id = intent.getLongExtra("id", NONE);
             Reminder r = id == TEST_ID ? testReminder() : Db.get(this).get(id);
             if (r == null || (id != TEST_ID && r.done)) {
-                foregroundWatcherOrStop();
+                dequeue(id);
+                if (currentId == NONE) startNextQueuedOrWatch();
                 return START_NOT_STICKY;
+            }
+            if (QuietPeriod.isActive(this)) {
+                if (id != TEST_ID) enqueue(id);
+                if (currentId != NONE) deferCurrentForQuiet(); else foregroundWatcherOrStop();
+                return START_STICKY;
             }
             if (id == currentId) {
                 // Já está a tocar (p.ex. repetição do modo insistente): não reinicia o som.
@@ -155,35 +171,132 @@ public class AlarmService extends Service {
                 if (!paused) openAlarmScreen();
                 return START_STICKY;
             }
+            if (currentId != NONE && currentId != TEST_ID && id != TEST_ID) {
+                enqueue(id);
+                return START_STICKY;
+            }
+            if (id != TEST_ID && currentId == NONE && !ringQueue.isEmpty()) {
+                enqueue(id);
+                startNextQueuedOrWatch();
+                return START_STICKY;
+            }
             if (currentId != NONE && currentId != TEST_ID) {
-                // Outro lembrete estava a tocar: fica pendente (notificação + vigilante).
-                Reminder prev = Db.get(this).get(currentId);
-                if (prev != null && !prev.done) Notifier.showMain(this, prev, false);
+                queueFirst(currentId);
                 Notifier.cancelWatchAlarm(this, currentId);
             }
             releasePlayback();
-            currentId = id;
-            paused = false;
-            foreground(buildAlarmNotification(r, id), true);
-            if (id != TEST_ID) Notifier.showWatchAlarm(this, r);
-            startPlayback();
-            openAlarmScreen();
+            currentId = NONE;
+            if (id != TEST_ID) dequeue(id);
+            beginRinging(r, id);
             return START_STICKY;
         }
         if (ACT_REPOST.equals(act)) {
             // O utilizador deslizou a notificação do alarme: volta a mostrá-la (o alarme só pára com uma ação).
             if (currentId != NONE) {
+                if (QuietPeriod.isActive(this)) {
+                    deferCurrentForQuiet();
+                    return START_STICKY;
+                }
                 Reminder r = currentId == TEST_ID ? testReminder() : Db.get(this).get(currentId);
                 if (r != null) {
                     foreground(buildAlarmNotification(r, currentId), true);
                     if (currentId != TEST_ID) Notifier.showWatchAlarm(this, r);
                 }
-            } else foregroundWatcherOrStop();
+            } else startNextQueuedOrWatch();
             return START_STICKY;
         }
         // ACT_WATCH
-        if (currentId == NONE) foregroundWatcherOrStop();
+        if (currentId == NONE) startNextQueuedOrWatch();
         return START_STICKY;
+    }
+
+    private void beginRinging(Reminder r, long id) {
+        currentId = id;
+        paused = false;
+        persistCurrent();
+        if (id != TEST_ID) Notifier.cancel(this, id);
+        foreground(buildAlarmNotification(r, id), true);
+        if (id != TEST_ID) Notifier.showWatchAlarm(this, r);
+        startPlayback();
+        openAlarmScreen();
+    }
+
+    private void enqueue(long id) {
+        if (id > 0 && !ringQueue.contains(id)) {
+            ringQueue.add(id);
+            persistQueue();
+        }
+    }
+
+    private void queueFirst(long id) {
+        if (id <= 0) return;
+        ringQueue.remove(Long.valueOf(id));
+        ringQueue.add(0, id);
+        persistQueue();
+    }
+
+    private void dequeue(long id) {
+        if (id > 0 && ringQueue.remove(Long.valueOf(id))) persistQueue();
+    }
+
+    private void startNextQueuedOrWatch() {
+        if (currentId != NONE) return;
+        if (QuietPeriod.isActive(this)) {
+            foregroundWatcherOrStop();
+            return;
+        }
+        while (!ringQueue.isEmpty()) {
+            long next = ringQueue.remove(0);
+            persistQueue();
+            Reminder r = Db.get(this).get(next);
+            if (r == null || r.done || !r.notified || !r.alarm) continue;
+            beginRinging(r, next);
+            return;
+        }
+        foregroundWatcherOrStop();
+    }
+
+    private void deferCurrentForQuiet() {
+        if (currentId != NONE) {
+            long id = currentId;
+            if (id != TEST_ID) {
+                queueFirst(id);
+                Notifier.cancelWatchAlarm(this, id);
+            }
+            releasePlayback();
+            currentId = NONE;
+            persistCurrent();
+            AlarmActivity.closeAll();
+        }
+        startNextQueuedOrWatch();
+    }
+
+    private void restoreRingQueue() {
+        String active = Prefs.str(this, "alarm_current");
+        if (active != null && !active.isEmpty()) {
+            try { queueFirst(Long.parseLong(active)); } catch (NumberFormatException ignored) { }
+        }
+        String saved = Prefs.str(this, "alarm_ring_queue");
+        if (saved != null && !saved.isEmpty()) {
+            for (String item : saved.split(",")) {
+                try { enqueue(Long.parseLong(item)); } catch (NumberFormatException ignored) { }
+            }
+        }
+        Prefs.setStr(this, "alarm_current", "");
+        persistQueue();
+    }
+
+    private void persistCurrent() {
+        Prefs.setStr(this, "alarm_current", currentId > 0 ? String.valueOf(currentId) : "");
+    }
+
+    private void persistQueue() {
+        StringBuilder value = new StringBuilder();
+        for (Long id : ringQueue) {
+            if (value.length() > 0) value.append(',');
+            value.append(id.longValue());
+        }
+        Prefs.setStr(this, "alarm_ring_queue", value.toString());
     }
 
     private void foreground(Notification n, boolean ringing) {
@@ -429,7 +542,8 @@ public class AlarmService extends Service {
         if (currentId != NONE && currentId != TEST_ID) Notifier.cancelWatchAlarm(this, currentId);
         releasePlayback();
         currentId = NONE;
+        persistCurrent();
         AlarmActivity.closeAll();
-        foregroundWatcherOrStop();
+        startNextQueuedOrWatch();
     }
 }
