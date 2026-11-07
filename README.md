@@ -47,14 +47,16 @@ cp /caminho/seguro/release.jks .   # a chave de assinatura (não está no reposi
 
 ## Compilar no GitHub (Actions)
 
-O workflow `.github/workflows/build.yml` compila o APK a cada push para `main`. Com uma tag `v*` (por exemplo `v2.3.2`), cria também uma Release com o APK.
+O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais fora de tags. Esse APK não pode ser instalado até ser assinado. Uma tag `v*` (por exemplo `v2.3.2`) gera um APK assinado e cria uma Release.
 
-Antes da primeira compilação, crie dois *secrets* em **Settings → Secrets and variables → Actions**:
+Para compilar uma Release, crie o ambiente `release` em **Settings → Environments**. Adicione estes *secrets* ao ambiente, não como secrets gerais do repositório:
 
 | Secret | Valor |
 |---|---|
 | `KEYSTORE_BASE64` | o ficheiro `release.jks` em base64 (`base64 -w0 release.jks`) |
 | `KS_PASS` | a password da chave |
+
+Configure o ambiente `release` para exigir aprovação e aceitar apenas tags de versão `v*`. Assim a chave só fica disponível no job de Release depois da aprovação. O job que cria a Release no GitHub tem permissão de escrita; os jobs de build têm apenas leitura.
 
 **Importante:** use sempre a mesma chave `release.jks`. Um APK assinado com outra chave não instala por cima da versão anterior: seria preciso desinstalar a app e perderiam-se os lembretes. A chave **não** é publicada no repositório (ver `.gitignore`).
 

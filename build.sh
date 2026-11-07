@@ -5,6 +5,7 @@
 # caso contrário usa ferramentas locais em $LEMBRA_TOOLS (ambiente onde a app foi criada).
 #
 # Assinatura: KEYSTORE (ficheiro, por defeito release.jks), KS_PASS e KS_ALIAS (por defeito "lembra").
+# Preview sem chave: UNSIGNED=1 gera build/Lembra-unsigned.apk (não instalável até ser assinado).
 set -e
 cd "$(dirname "$0")"
 KEYSTORE=${KEYSTORE:-release.jks}
@@ -34,6 +35,12 @@ else
   $DX --dex --min-sdk-version=26 --output=$OUT/dex/classes.dex $OUT/cls
 fi
 python3 tools/zipalign.py $OUT/base.apk $OUT/aligned.apk classes.dex=$OUT/dex/classes.dex
+
+if [ "${UNSIGNED:-0}" = "1" ]; then
+  cp $OUT/aligned.apk build/Lembra-unsigned.apk
+  echo "APK de preview sem assinatura: build/Lembra-unsigned.apk"
+  exit 0
+fi
 
 if [ ! -f "$KEYSTORE" ]; then
   echo "Aviso: $KEYSTORE não existe — a criar uma chave nova (as atualizações têm de usar sempre a mesma chave)."
