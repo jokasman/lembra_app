@@ -47,7 +47,7 @@ cp /caminho/seguro/release.jks .   # a chave de assinatura (não está no reposi
 
 ## Compilar no GitHub (Actions)
 
-O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais fora de tags. Esse APK não pode ser instalado até ser assinado. Uma tag `v*` (por exemplo `v2.3.2`) gera um APK assinado e cria uma Release.
+O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais normais. Para obter um APK assinado sem criar uma Release, execute manualmente o workflow em **Actions → Build Android APK → Run workflow** e marque a opção **Gerar um APK assinado**. O APK aparece como artefacto `Lembra-apk-assinado`. Uma tag `v*` (por exemplo `v2.3.2`) continua a gerar um APK assinado e a criar uma Release.
 
 Para compilar uma Release, crie estes *Repository secrets* em **Settings → Secrets and variables → Actions**:
 
@@ -56,7 +56,7 @@ Para compilar uma Release, crie estes *Repository secrets* em **Settings → Sec
 | `KEYSTORE_BASE64` | o ficheiro `release.jks` em base64 (`base64 -w0 release.jks`) |
 | `KS_PASS` | a password da chave |
 
-Os secrets só são usados pelo job de build assinado, acionado por tags `v*`; o job que cria a Release no GitHub tem permissão de escrita e os jobs de build têm apenas leitura. Por serem Repository secrets, podem ser usados por qualquer workflow deste repositório que os referencie.
+Os secrets só são usados pelos jobs de build assinado; o job que cria a Release no GitHub tem permissão de escrita e os jobs de build têm apenas leitura. Por serem Repository secrets, podem ser usados por qualquer workflow deste repositório que os referencie.
 
 **Importante:** use sempre a mesma chave `release.jks`. Um APK assinado com outra chave não instala por cima da versão anterior: seria preciso desinstalar a app e perderiam-se os lembretes. A chave **não** é publicada no repositório (ver `.gitignore`).
 

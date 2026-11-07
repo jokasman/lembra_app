@@ -2,6 +2,12 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      signed:
+        description: Gerar um APK assinado com os Repository secrets
+        type: boolean
+        required: false
+        default: false
   push:
     branches: [main]
     tags: ['v*']
@@ -11,7 +17,7 @@ permissions:
 
 jobs:
   preview:
-    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && !startsWith(github.ref, 'refs/tags/v')
+    if: (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.signed != true)) && !startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,6 +41,50 @@ jobs:
           name: Lembra-apk-preview-unsigned
           path: build/Lembra-unsigned.apk
           if-no-files-found: error
+
+  signed-preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.signed == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Android SDK (build-tools e plataforma)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0" "platforms;android-35" > /dev/null
+
+      - name: Repor a chave de assinatura
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KS_PASS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ]; then
+            echo "::error::Configure KEYSTORE_BASE64 e KS_PASS em Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > release.jks
+          chmod 600 release.jks
+
+      - name: Compilar APK assinado
+        env:
+          KS_PASS: ${{ secrets.KS_PASS }}
+        run: bash ./build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lembra-apk-assinado
+          path: build/Lembra.apk
+          if-no-files-found: error
+
+      - name: Remover chave temporária
+        if: always()
+        run: rm -f release.jks
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
