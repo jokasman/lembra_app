@@ -39,8 +39,6 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    environment:
-      name: release
     permissions:
       contents: read
     steps:
@@ -55,13 +53,13 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0" "platforms;android-35" > /dev/null
 
-      - name: Repor a chave de assinatura do ambiente release
+      - name: Repor a chave de assinatura
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KS_PASS }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ]; then
-            echo "::error::Configure KEYSTORE_BASE64 e KS_PASS como secrets do ambiente release."
+            echo "::error::Configure KEYSTORE_BASE64 e KS_PASS em Settings → Secrets and variables → Actions."
             exit 1
           fi
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > release.jks
