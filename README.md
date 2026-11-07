@@ -47,7 +47,7 @@ cp /caminho/seguro/release.jks .   # a chave de assinatura (não está no reposi
 
 ## Compilar no GitHub (Actions)
 
-O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais normais. Para obter um APK assinado sem criar uma Release, execute manualmente o workflow em **Actions → Build Android APK → Run workflow** e marque a opção **Gerar um APK assinado**. O APK aparece como artefacto `Lembra-apk-assinado`. Uma tag `v*` (por exemplo `v2.3.2`) continua a gerar um APK assinado e a criar uma Release.
+O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais normais. Para obter um APK assinado sem criar uma Release, execute manualmente o workflow em **Actions → Build Android APK → Run workflow** e marque a opção **Gerar um APK assinado**. Também é possível iniciar esse build num push para `main` incluindo `[signed-apk]` na mensagem do commit. O APK aparece como artefacto `Lembra-apk-assinado`. Uma tag `v*` (por exemplo `v2.3.2`) continua a gerar um APK assinado e a criar uma Release.
 
 Para compilar uma Release, crie estes *Repository secrets* em **Settings → Secrets and variables → Actions**:
 
