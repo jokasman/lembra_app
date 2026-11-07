@@ -67,7 +67,18 @@ public class AlarmActivity extends BaseActivity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{darken(color), 0xFF0E1016});
         root.setBackground(bg);
-        root.setPadding(dp(28), dp(72), dp(28), dp(40));
+        root.setPadding(dp(28), dp(40), dp(28), dp(20));
+
+        // O conteúdo inteiro pode deslizar; os botões ficam fora do scroll e sempre visíveis.
+        android.widget.ScrollView page = new android.widget.ScrollView(this);
+        page.setFillViewport(true);
+        page.setVerticalScrollBarEnabled(false);
+        page.setClipToPadding(false);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        page.addView(content, new android.widget.ScrollView.LayoutParams(-1, -2));
+        root.addView(page, new LinearLayout.LayoutParams(-1, 0, 1));
 
         long now = System.currentTimeMillis();
         TextView clock = new TextView(this);
@@ -75,12 +86,12 @@ public class AlarmActivity extends BaseActivity {
         clock.setTextSize(72);
         clock.setTextColor(0xFFFFFFFF);
         clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        root.addView(clock);
+        content.addView(clock);
         TextView day = new TextView(this);
         day.setText(Fmt.dateLong(now));
         day.setTextSize(16);
         day.setTextColor(0xCCFFFFFF);
-        root.addView(day);
+        content.addView(day);
 
         TextView t = new TextView(this);
         t.setText((r != null && r.important ? "★ " : "") + title);
@@ -88,8 +99,8 @@ public class AlarmActivity extends BaseActivity {
         t.setTextColor(0xFFFFFFFF);
         t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);
-        t.setPadding(0, dp(48), 0, dp(8));
-        root.addView(t);
+        t.setPadding(0, dp(32), 0, dp(8));
+        content.addView(t);
         StringBuilder sub = new StringBuilder();
         if (notes != null && !notes.trim().isEmpty()) sub.append(notes.trim());
         if (r != null && r.isRecurring()) sub.append(sub.length() > 0 ? "\n" : "").append("↻ ").append(Recurrence.describe(r));
@@ -100,7 +111,7 @@ public class AlarmActivity extends BaseActivity {
             n.setTextColor(0xCCFFFFFF);
             n.setGravity(Gravity.CENTER);
             n.setMaxLines(6);
-            root.addView(n);
+            content.addView(n);
         }
 
         // Foto (primeiro anexo de imagem) e checklist
@@ -117,12 +128,11 @@ public class AlarmActivity extends BaseActivity {
                 iv.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { EditActivity.openAttachment(AlarmActivity.this, a); } });
                 LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(-1, dp(160));
                 ilp.topMargin = dp(18);
-                root.addView(iv, ilp);
+                content.addView(iv, ilp);
                 break;
             }
             List<Db.Sub> subs = Db.get(this).subtasks(r.id);
             if (!subs.isEmpty()) {
-                android.widget.ScrollView ss = new android.widget.ScrollView(this);
                 LinearLayout sl = new LinearLayout(this);
                 sl.setOrientation(LinearLayout.VERTICAL);
                 sl.setBackground(Ui.round(0x22FFFFFF, dp(18)));
@@ -143,15 +153,11 @@ public class AlarmActivity extends BaseActivity {
                     } });
                     sl.addView(it);
                 }
-                ss.addView(sl);
-                LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, -2, 1);
+                LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, -2);
                 slp.topMargin = dp(16);
-                root.addView(ss, slp);
+                content.addView(sl, slp);
             }
         }
-
-        View space = new View(this);
-        root.addView(space, new LinearLayout.LayoutParams(1, 0, 1));
 
         if (test) {
             root.addView(bigButton("Parar", 0xFFFFFFFF, 0xFF0E1016, new View.OnClickListener() { public void onClick(View v) { AlarmService.stop(null); finish(); } }));

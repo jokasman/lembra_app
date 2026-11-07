@@ -15,6 +15,7 @@ import pt.lembra.core.Fmt;
 import pt.lembra.core.Recurrence;
 import pt.lembra.core.Reminder;
 import pt.lembra.data.Prefs;
+import pt.lembra.ui.AlarmActivity;
 import pt.lembra.ui.EditActivity;
 import pt.lembra.ui.SnoozeActivity;
 
@@ -22,7 +23,9 @@ import pt.lembra.ui.SnoozeActivity;
 public final class Notifier {
     private Notifier() {}
 
-    static final String CH_MAIN = "lembretes", CH_IMP = "importantes", CH_PRE = "avisos", CH_ALARM_SOUND = "alarme_som";
+    static final String CH_MAIN = "lembretes", CH_IMP = "importantes", CH_PRE = "avisos", CH_ALARM_SOUND = "alarme_som",
+            CH_WATCH_ALARM = "despertador_relogio";
+    private static int watchAlarmId(long id) { return 0x60000000 | ((int) id & 0x0FFFFFFF); }
 
     /** Som de alarme incluído na app (funciona sempre, sem depender do som do sistema). */
     public static android.net.Uri bundledTone(Context ctx) {
@@ -58,6 +61,12 @@ public final class Notifier {
         al.setVibrationPattern(new long[]{0, 700, 500, 700, 500, 700});
         al.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         nm.createNotificationChannel(al);
+        NotificationChannel watch = new NotificationChannel(CH_WATCH_ALARM, "Controlos no relógio", NotificationManager.IMPORTANCE_DEFAULT);
+        watch.setDescription("Notificação do despertador com ações para adiar ou parar");
+        watch.setSound(null, null);
+        watch.enableVibration(false);
+        watch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(watch);
     }
 
     static int mainId(long id) { return (int) (id * 2); }
@@ -67,6 +76,41 @@ public final class Notifier {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         nm.cancel(mainId(id));
         nm.cancel(preId(id));
+        cancelWatchAlarm(ctx, id);
+    }
+
+    /** Notificação normal, separada da foreground, para poder ser espelhada no Wear OS. */
+    public static void showWatchAlarm(Context ctx, Reminder r) {
+        ensureChannels(ctx);
+        int quick = Prefs.quickSnooze(ctx);
+        Intent open = new Intent(ctx, AlarmActivity.class).putExtra("id", r.id)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent openPi = PendingIntent.getActivity(ctx, 777_004, open,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        String body = "Alarme a tocar · " + Fmt.time(r.effectiveTime());
+        Notification n = new Notification.Builder(ctx, CH_WATCH_ALARM)
+                .setSmallIcon(R.drawable.ic_notif)
+                .setColor(Categories.color(r.category))
+                .setContentTitle("⏰ " + r.title)
+                .setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setWhen(r.effectiveTime()).setShowWhen(true)
+                .setContentIntent(openPi)
+                .setLocalOnly(false)
+                .setAutoCancel(false)
+                .setOnlyAlertOnce(true)
+                .addAction(new Notification.Action.Builder(null, "Adiar " + Fmt.duration(quick),
+                        action(ctx, Engine.A_SNOOZE, r.id, 1, quick)).build())
+                .addAction(new Notification.Action.Builder(null, "Parar",
+                        action(ctx, Engine.A_DONE, r.id, 0, 0)).build())
+                .build();
+        ctx.getSystemService(NotificationManager.class).notify(watchAlarmId(r.id), n);
+    }
+
+    public static void cancelWatchAlarm(Context ctx, long id) {
+        ctx.getSystemService(NotificationManager.class).cancel(watchAlarmId(id));
     }
 
     static PendingIntent openIntent(Context ctx, long id) {

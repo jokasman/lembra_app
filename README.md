@@ -7,6 +7,8 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Escrita natural em português**: "Pagar renda dia 8 todos os meses às 10h #finanças" cria o lembrete com data, hora, repetição e categoria.
 - **Data e hora, recorrência e adiar**: repete todos os dias, em dias úteis, todas as semanas (nos dias que escolher), todos os meses, todos os anos ou a cada N horas, dias, semanas ou meses. Pode terminar numa data ou ao fim de N vezes. Para adiar há opções rápidas (10 min, 1 h, esta noite, amanhã…) ou uma data e hora à escolha.
 - **Despertador**: toca com som de alarme mesmo em silêncio, em ecrã inteiro, com volume próprio que vai aumentando. Só pára quando marca como feito ou adia.
+- **Ecrã do despertador**: o conteúdo e as checklists grandes deslizam sem ocultar os botões de ação.
+- **Relógio Wear OS**: recebe uma notificação do alarme com ações para adiar ou parar.
 - **Nada fica esquecido**: ao desbloquear o telemóvel aparece o ecrã "Por tratar".
 - **Lembretes por localização**: avisa ao chegar ou ao sair de um local guardado. Usa só o Android, sem serviços Google.
 - **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.

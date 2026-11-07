@@ -151,6 +151,7 @@ public class AlarmService extends Service {
             if (id == currentId) {
                 // Já está a tocar (p.ex. repetição do modo insistente): não reinicia o som.
                 foreground(buildAlarmNotification(r, id), true);
+                if (id != TEST_ID) Notifier.showWatchAlarm(this, r);
                 if (!paused) openAlarmScreen();
                 return START_STICKY;
             }
@@ -158,11 +159,13 @@ public class AlarmService extends Service {
                 // Outro lembrete estava a tocar: fica pendente (notificação + vigilante).
                 Reminder prev = Db.get(this).get(currentId);
                 if (prev != null && !prev.done) Notifier.showMain(this, prev, false);
+                Notifier.cancelWatchAlarm(this, currentId);
             }
             releasePlayback();
             currentId = id;
             paused = false;
             foreground(buildAlarmNotification(r, id), true);
+            if (id != TEST_ID) Notifier.showWatchAlarm(this, r);
             startPlayback();
             openAlarmScreen();
             return START_STICKY;
@@ -171,7 +174,10 @@ public class AlarmService extends Service {
             // O utilizador deslizou a notificação do alarme: volta a mostrá-la (o alarme só pára com uma ação).
             if (currentId != NONE) {
                 Reminder r = currentId == TEST_ID ? testReminder() : Db.get(this).get(currentId);
-                if (r != null) foreground(buildAlarmNotification(r, currentId), true);
+                if (r != null) {
+                    foreground(buildAlarmNotification(r, currentId), true);
+                    if (currentId != TEST_ID) Notifier.showWatchAlarm(this, r);
+                }
             } else foregroundWatcherOrStop();
             return START_STICKY;
         }
@@ -420,6 +426,7 @@ public class AlarmService extends Service {
     }
 
     private void stopRinging() {
+        if (currentId != NONE && currentId != TEST_ID) Notifier.cancelWatchAlarm(this, currentId);
         releasePlayback();
         currentId = NONE;
         AlarmActivity.closeAll();
