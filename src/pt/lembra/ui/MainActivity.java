@@ -590,7 +590,14 @@ public class MainActivity extends BaseActivity {
         pm.show();
     }
 
-    private void complete(Reminder r) {
+    private void complete(final Reminder r) {
+        if (Auth.needed(this, r)) {
+            Auth.require(this, r.title, new Runnable() { public void run() { completeNow(r); } },
+                    new Runnable() { public void run() { refresh(); } });
+        } else completeNow(r);
+    }
+
+    private void completeNow(Reminder r) {
         Reminder snap = r.copy();
         Engine.complete(this, r);
         Reminder after = Db.get(this).get(r.id);

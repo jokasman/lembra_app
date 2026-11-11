@@ -59,6 +59,22 @@ public final class Prefs {
     public static int theme(Context c) { return sp(c).getInt("theme", 0); }
     public static void setTheme(Context c, int v) { sp(c).edit().putInt("theme", v).apply(); }
 
+    /** Marcar como feito exige PIN ou impressão digital (cada lembrete pode contrariar). */
+    public static boolean doneAuth(Context c) { return sp(c).getBoolean("done_auth", false); }
+    public static void setDoneAuth(Context c, boolean v) { sp(c).edit().putBoolean("done_auth", v).apply(); }
+
+    /** Perguntar por um lembrete quando uma chamada termina. */
+    public static boolean callPrompt(Context c) { return sp(c).getBoolean("call_prompt", false); }
+    public static void setCallPrompt(Context c, boolean v) { sp(c).edit().putBoolean("call_prompt", v).apply(); }
+
+    /** Tipos de chamada que originam a pergunta (bits de CallFollowUp). */
+    public static int callPromptMask(Context c) { return sp(c).getInt("call_prompt_mask", pt.lembra.core.CallFollowUp.DEFAULT_MASK); }
+    public static void setCallPromptMask(Context c, int v) { sp(c).edit().putInt("call_prompt_mask", v).apply(); }
+
+    /** Estado da chamada em curso: 0 = nenhuma, bit0 = tocou, bit1 = em linha. */
+    public static int callState(Context c) { return sp(c).getInt("call_state", 0); }
+    public static void setCallState(Context c, int v) { sp(c).edit().putInt("call_state", v).commit(); }
+
     public static String str(Context c, String key) { return sp(c).getString(key, null); }
     public static void setStr(Context c, String key, String v) { sp(c).edit().putString(key, v).apply(); }
 

@@ -41,7 +41,7 @@ import pt.lembra.data.Prefs;
 
 /** Definições, verificação de fiabilidade e backup. */
 public class SettingsActivity extends BaseActivity {
-    static final int REQ_EXPORT = 10, REQ_IMPORT = 11, REQ_SOUND = 12;
+    static final int REQ_EXPORT = 10, REQ_IMPORT = 11, REQ_SOUND = 12, REQ_CALLS = 13;
     private LinearLayout body;
 
     private int dp(float v) { return Ui.dp(this, v); }
@@ -118,6 +118,10 @@ public class SettingsActivity extends BaseActivity {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
         } }));
         android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+        if (Prefs.callPrompt(this)) {
+            rel.addView(check("Lembrete depois das chamadas", pt.lembra.alarm.CallReceiver.hasPermissions(this), "Permissões concedidas",
+                    "Sem acesso ao telefone ou ao registo de chamadas — a pergunta não aparece", new Runnable() { public void run() { requestCallPermissions(); } }));
+        }
         rel.addView(check("Volume do despertador", true, "Definido no Lembra: " + Prefs.alarmVolume(this) + "% (independente do sistema)", "", null));
         String diag = Prefs.str(this, "alarm_diag");
         if (diag != null) {
@@ -192,6 +196,19 @@ public class SettingsActivity extends BaseActivity {
         pref.addView(Ui.optionRow(this, "Novos lembretes tocam como despertador", ad ? "Sim — som de alarme mesmo em silêncio" : "Não — notificação normal", new View.OnClickListener() {
             public void onClick(View v) { Prefs.setAlarmDefault(SettingsActivity.this, !ad); build(); }
         }));
+        final boolean da = Prefs.doneAuth(this);
+        pref.addView(Ui.optionRow(this, "Marcar como feito exige PIN ou impressão digital", da ? "Sim — cada lembrete pode dispensar" : "Não — cada lembrete pode exigir", new View.OnClickListener() {
+            public void onClick(View v) { toggleDoneAuth(da); }
+        }));
+        final boolean cp = Prefs.callPrompt(this);
+        pref.addView(Ui.optionRow(this, "Perguntar por lembrete depois das chamadas", cp ? "Sim — com opções de 10 min, 30 min, 1 hora e 4 horas" : "Não", new View.OnClickListener() {
+            public void onClick(View v) { toggleCallPrompt(cp); }
+        }));
+        if (cp) {
+            pref.addView(Ui.optionRow(this, "Em que chamadas perguntar", callMaskText(Prefs.callPromptMask(this)), new View.OnClickListener() {
+                public void onClick(View v) { pickCallMask(); }
+            }));
+        }
         pref.addView(Ui.optionRow(this, "Categorias", Categories.all().size() + " categorias · criar, mudar nome e cor, reordenar", new View.OnClickListener() {
             public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, CategoriesActivity.class)); }
         }));
@@ -539,6 +556,86 @@ public class SettingsActivity extends BaseActivity {
         new AlertDialog.Builder(this).setTitle(title).setSingleChoiceItems(labels, sel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface d, int which) { cb.on(vals[which]); d.dismiss(); build(); }
         }).show();
+    }
+
+    // ------------------------------------------------------------------ Autenticação e chamadas
+    private void toggleDoneAuth(final boolean current) {
+        if (!current && !Auth.deviceSecure(this)) {
+            Toast.makeText(this, "Defina primeiro um bloqueio de ecrã (PIN, padrão ou impressão digital) no telemóvel.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Ligar confirma que a autenticação funciona; desligar exige-a, para não poder ser contornada.
+        Auth.require(this, current ? "Deixar de exigir autenticação" : "Exigir autenticação", new Runnable() { public void run() {
+            Prefs.setDoneAuth(SettingsActivity.this, !current);
+            Engine.changed(SettingsActivity.this);
+            build();
+        } });
+    }
+
+    private static final int[] CALL_KINDS = {pt.lembra.core.CallFollowUp.ANSWERED, pt.lembra.core.CallFollowUp.REJECTED, pt.lembra.core.CallFollowUp.MISSED};
+    private static final String[] CALL_LABELS = {"Atendidas ou feitas por mim", "Rejeitadas (com ou sem mensagem rápida)", "Perdidas (não atendidas)"};
+    private static final String[] CALL_SHORT = {"atendidas ou feitas", "rejeitadas", "perdidas"};
+
+    private static String callMaskText(int mask) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < CALL_KINDS.length; i++) {
+            if ((mask & CALL_KINDS[i]) == 0) continue;
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(CALL_SHORT[i]);
+        }
+        if (sb.length() == 0) return "Nenhuma";
+        return Character.toUpperCase(sb.charAt(0)) + sb.substring(1);
+    }
+
+    private void pickCallMask() {
+        final int[] mask = {Prefs.callPromptMask(this)};
+        boolean[] checked = new boolean[CALL_KINDS.length];
+        for (int i = 0; i < CALL_KINDS.length; i++) checked[i] = (mask[0] & CALL_KINDS[i]) != 0;
+        new AlertDialog.Builder(this).setTitle("Em que chamadas perguntar")
+                .setMultiChoiceItems(CALL_LABELS, checked, new DialogInterface.OnMultiChoiceClickListener() {
+                    public void onClick(DialogInterface d, int which, boolean on) {
+                        if (on) mask[0] |= CALL_KINDS[which]; else mask[0] &= ~CALL_KINDS[which];
+                    }
+                })
+                .setPositiveButton("Guardar", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { Prefs.setCallPromptMask(SettingsActivity.this, mask[0]); build(); }
+                })
+                .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void toggleCallPrompt(boolean current) {
+        if (current) { Prefs.setCallPrompt(this, false); build(); return; }
+        if (pt.lembra.alarm.CallReceiver.hasPermissions(this)) { enableCallPrompt(); return; }
+        new AlertDialog.Builder(this).setTitle("Lembrete depois das chamadas")
+                .setMessage("Para saber quando uma chamada termina e com quem foi, o Lembra precisa de acesso ao telefone, ao registo de chamadas e aos contactos. "
+                        + "Estes dados são usados só neste telemóvel, para propor o texto do lembrete (por exemplo, \"Ligar a João\").")
+                .setPositiveButton("Continuar", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { requestCallPermissions(); }
+                })
+                .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void requestCallPermissions() {
+        requestPermissions(new String[]{android.Manifest.permission.READ_PHONE_STATE, android.Manifest.permission.READ_CALL_LOG,
+                android.Manifest.permission.READ_CONTACTS}, REQ_CALLS);
+    }
+
+    private void enableCallPrompt() {
+        Prefs.setCallPrompt(this, true);
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Sem a permissão \"Abrir por cima de outras apps\", a pergunta aparece como notificação.", Toast.LENGTH_LONG).show();
+        }
+        build();
+    }
+
+    @Override public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
+        super.onRequestPermissionsResult(req, perms, results);
+        if (req != REQ_CALLS) return;
+        if (pt.lembra.alarm.CallReceiver.hasPermissions(this)) enableCallPrompt();
+        else {
+            Toast.makeText(this, "Sem acesso ao telefone e ao registo de chamadas não é possível detetar o fim das chamadas.", Toast.LENGTH_LONG).show();
+            build();
+        }
     }
 
     @Override protected void onActivityResult(int req, int res, Intent data) {

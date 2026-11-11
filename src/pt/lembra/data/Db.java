@@ -27,12 +27,12 @@ public class Db extends SQLiteOpenHelper {
         return instance;
     }
 
-    private Db(Context ctx) { super(ctx, "lembra.db", null, 4); }
+    private Db(Context ctx) { super(ctx, "lembra.db", null, 5); }
 
     private static final String[] COLS = {"id", "title", "notes", "due_at", "snoozed_until", "repeat_type", "interval_n",
             "interval_unit", "week_mask", "month_day", "end_type", "end_date", "end_count", "cnt", "category",
             "important", "pre_alert", "done", "done_at", "created_at", "notified", "pre_notified", "alarm",
-            "loc_place", "loc_trigger", "loc_repeat"};
+            "loc_place", "loc_trigger", "loc_repeat", "done_auth"};
 
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, notes TEXT, " +
@@ -41,7 +41,7 @@ public class Db extends SQLiteOpenHelper {
                 "end_date INTEGER DEFAULT 0, end_count INTEGER DEFAULT 0, cnt INTEGER DEFAULT 0, category INTEGER DEFAULT 0, " +
                 "important INTEGER DEFAULT 0, pre_alert INTEGER DEFAULT 0, done INTEGER DEFAULT 0, done_at INTEGER DEFAULT 0, " +
                 "created_at INTEGER DEFAULT 0, notified INTEGER DEFAULT 0, pre_notified INTEGER DEFAULT 0, alarm INTEGER DEFAULT 1, " +
-                "loc_place INTEGER DEFAULT 0, loc_trigger INTEGER DEFAULT 1, loc_repeat INTEGER DEFAULT 0)");
+                "loc_place INTEGER DEFAULT 0, loc_trigger INTEGER DEFAULT 1, loc_repeat INTEGER DEFAULT 0, done_auth INTEGER DEFAULT 0)");
         createCategories(db);
         createV4(db);
     }
@@ -76,6 +76,7 @@ public class Db extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE reminders ADD COLUMN loc_repeat INTEGER DEFAULT 0");
             createV4(db);
         }
+        if (o < 5) db.execSQL("ALTER TABLE reminders ADD COLUMN done_auth INTEGER DEFAULT 0");
     }
 
     private static Reminder read(Cursor c) {
@@ -87,6 +88,7 @@ public class Db extends SQLiteOpenHelper {
         r.important = c.getInt(15) != 0; r.preAlertMin = c.getInt(16); r.done = c.getInt(17) != 0; r.doneAt = c.getLong(18);
         r.createdAt = c.getLong(19); r.notified = c.getInt(20) != 0; r.preNotified = c.getInt(21) != 0; r.alarm = c.getInt(22) != 0;
         r.locPlace = c.getLong(23); r.locTrigger = c.getInt(24); r.locRepeat = c.getInt(25) != 0;
+        r.doneAuth = Math.max(0, Math.min(2, c.getInt(26)));
         return r;
     }
 
@@ -99,6 +101,7 @@ public class Db extends SQLiteOpenHelper {
         v.put("pre_alert", r.preAlertMin); v.put("done", r.done ? 1 : 0); v.put("done_at", r.doneAt); v.put("created_at", r.createdAt);
         v.put("notified", r.notified ? 1 : 0); v.put("pre_notified", r.preNotified ? 1 : 0); v.put("alarm", r.alarm ? 1 : 0);
         v.put("loc_place", r.locPlace); v.put("loc_trigger", r.locTrigger); v.put("loc_repeat", r.locRepeat ? 1 : 0);
+        v.put("done_auth", r.doneAuth);
         return v;
     }
 

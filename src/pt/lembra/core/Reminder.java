@@ -35,6 +35,15 @@ public class Reminder {
     /** Toca como despertador (som de alarme, ecrã inteiro, mesmo com o telemóvel em silêncio). */
     public boolean alarm = true;
 
+    /** Autenticação (PIN ou impressão digital) para marcar como feito. */
+    public static final int AUTH_DEFAULT = 0, AUTH_ALWAYS = 1, AUTH_NEVER = 2;
+    public int doneAuth = AUTH_DEFAULT;
+
+    /** Indica se marcar como feito exige autenticação, dada a definição geral. */
+    public boolean needsDoneAuth(boolean global) {
+        return doneAuth == AUTH_ALWAYS || (doneAuth != AUTH_NEVER && global);
+    }
+
     /** Lembrete por localização: local guardado (0 = lembrete por hora). */
     public long locPlace;
     public static final int LOC_ARRIVE = 1, LOC_LEAVE = 2;
@@ -63,6 +72,7 @@ public class Reminder {
         r.monthDay = monthDay; r.endType = endType; r.endDate = endDate; r.endCount = endCount; r.count = count;
         r.category = category; r.important = important; r.preAlertMin = preAlertMin; r.done = done;
         r.doneAt = doneAt; r.createdAt = createdAt; r.notified = notified; r.preNotified = preNotified; r.alarm = alarm; r.locPlace = locPlace; r.locTrigger = locTrigger; r.locRepeat = locRepeat;
+        r.doneAuth = doneAuth;
         return r;
     }
 

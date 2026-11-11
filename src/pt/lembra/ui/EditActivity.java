@@ -46,7 +46,7 @@ public class EditActivity extends BaseActivity {
     private Reminder r;
     private Reminder original;
     private boolean isNew;
-    private boolean conflictConfirmed;
+    private boolean conflictConfirmed, authConfirmed;
 
     // Local
     private LinearLayout timePanel, locPanel, repeatCard;
@@ -64,7 +64,7 @@ public class EditActivity extends BaseActivity {
     private LocalDateTime when;
 
     private EditText titleE, notesE, intervalE, endCountE;
-    private TextView dateBtn, timeBtn, repeatBtn, endBtn, preBtn, endDateBtn, unitBtn, snoozeInfo, summary;
+    private TextView dateBtn, timeBtn, repeatBtn, endBtn, preBtn, authBtn, endDateBtn, unitBtn, snoozeInfo, summary;
     private LinearLayout weekRow, customRow, endRow, catRow, snoozeRow, endDetail;
     private Switch importantSw, alarmSw;
     private TextView[] dayToggles = new TextView[7];
@@ -318,6 +318,11 @@ public class EditActivity extends BaseActivity {
         c4.addView(Ui.divider(this));
         importantSw = new Switch(this);
         c4.addView(switchRow("★ Importante · modo insistente", "Volta a avisar a cada " + Prefs.nagInterval(this) + " min até marcar como feito.", importantSw));
+        c4.addView(Ui.divider(this));
+        c4.addView(Ui.subLabel(this, "Marcar como feito"));
+        authBtn = field(R.drawable.ic_check);
+        authBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { pickAuth(); } });
+        c4.addView(authBtn);
         body.addView(c4);
 
         // Categoria
@@ -391,7 +396,15 @@ public class EditActivity extends BaseActivity {
             TextView doneB = Ui.button(this, r.done ? "Reativar" : "Marcar como feito", false);
             doneB.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                 if (r.done) Engine.uncomplete(EditActivity.this, Db.get(EditActivity.this).get(r.id));
-                else Engine.complete(EditActivity.this, Db.get(EditActivity.this).get(r.id));
+                else {
+                    final Reminder cur = Db.get(EditActivity.this).get(r.id);
+                    if (cur == null) { finish(); return; }
+                    Runnable done = new Runnable() { public void run() { Engine.complete(EditActivity.this, cur); finish(); } };
+                    // Vale o que está guardado, não o que foi alterado no ecrã sem guardar.
+                    if (Auth.needed(EditActivity.this, cur)) Auth.require(EditActivity.this, cur.title, done);
+                    else done.run();
+                    return;
+                }
                 finish();
             } });
             LinearLayout.LayoutParams alp = Ui.lpWeight(1); alp.setMarginEnd(dp(8));
@@ -505,6 +518,7 @@ public class EditActivity extends BaseActivity {
             endDateBtn.setText("Até " + Fmt.dateShort(r.endDate));
         }
         preBtn.setText(r.preAlertMin == 0 ? "Sem aviso antecipado" : Fmt.duration(r.preAlertMin) + " antes");
+        authBtn.setText(authLabels()[r.doneAuth]);
         catRow.removeAllViews();
         for (final Categories.Cat ct : Categories.all()) {
             TextView chip = Ui.chip(this, ct.name, r.category == ct.id, ct.color);
@@ -611,6 +625,17 @@ public class EditActivity extends BaseActivity {
         }).show();
     }
 
+    private String[] authLabels() {
+        return new String[]{"Segue as definições (" + (Prefs.doneAuth(this) ? "exige" : "não exige") + ")",
+                "Exige PIN ou impressão digital", "Não exige autenticação"};
+    }
+
+    private void pickAuth() {
+        new AlertDialog.Builder(this).setTitle("Marcar como feito").setSingleChoiceItems(authLabels(), r.doneAuth, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface d, int which) { r.doneAuth = which; d.dismiss(); bindAll(); }
+        }).show();
+    }
+
     private void confirmDelete() {
         new AlertDialog.Builder(this).setMessage("Apagar este lembrete?")
                 .setPositiveButton("Apagar", new DialogInterface.OnClickListener() {
@@ -625,6 +650,12 @@ public class EditActivity extends BaseActivity {
         if (title.isEmpty()) {
             titleE.setError("Escreva o lembrete");
             titleE.requestFocus();
+            return;
+        }
+        // Retirar a exigência de autenticação a um lembrete que a tinha também exige autenticação.
+        boolean global = Prefs.doneAuth(this);
+        if (!isNew && !authConfirmed && original.needsDoneAuth(global) && !r.needsDoneAuth(global)) {
+            Auth.require(this, "Retirar a autenticação", new Runnable() { public void run() { authConfirmed = true; save(); } });
             return;
         }
         r.title = title;
