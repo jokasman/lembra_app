@@ -86,6 +86,7 @@ public class EditActivity extends BaseActivity {
             r = new Reminder();
             r.preAlertMin = Prefs.defaultPreAlert(this);
             r.alarm = Prefs.alarmDefault(this);
+            r.important = Prefs.importantDefault(this);
             String pre = getIntent().getStringExtra("prefill");
             int def = Prefs.defaultTime(this);
             if (pre != null && !pre.trim().isEmpty()) {
@@ -93,6 +94,7 @@ public class EditActivity extends BaseActivity {
                 Reminder pr = p.toReminder();
                 pr.preAlertMin = r.preAlertMin;
                 pr.alarm = r.alarm;
+                pr.important = pr.important || r.important;
                 r = pr;
                 if (p.dueAt == null) r.dueAt = 0;
             }

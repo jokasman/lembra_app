@@ -491,6 +491,7 @@ public class MainActivity extends BaseActivity {
         Reminder r = p.toReminder();
         r.preAlertMin = Prefs.defaultPreAlert(this);
         r.alarm = Prefs.alarmDefault(this);
+        r.important = r.important || Prefs.importantDefault(this);
         Engine.save(this, r);
         quick.setText("");
         long now = System.currentTimeMillis();
@@ -536,6 +537,7 @@ public class MainActivity extends BaseActivity {
         if (parsed.dueAt == null) r.dueAt = now + 60 * 60 * 1000L;
         r.preAlertMin = Prefs.defaultPreAlert(this);
         r.alarm = Prefs.alarmDefault(this);
+        r.important = r.important || Prefs.importantDefault(this);
         Engine.save(this, r);
         Toast.makeText(this, "Nota guardada · " + Fmt.dayTime(r.effectiveTime(), now), Toast.LENGTH_LONG).show();
     }

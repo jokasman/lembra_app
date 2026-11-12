@@ -18,7 +18,8 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.
 - **Fotos e anexos**: tirar uma foto ou anexar ficheiros.
 - **Calendário mensal** com filtro por categoria.
-- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes.
+- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes. Os lembretes novos já vêm marcados como importantes; muda-se nas definições.
+- **Definições agrupadas** por tema: novos lembretes, avisos e adiamento, despertador, segurança, chamadas, aspeto e cópia de segurança.
 - **Categorias**: criar, mudar nome e cor, reordenar.
 - **Estatísticas e histórico**: concluídos, adiamentos, taxa de cumprimento e os lembretes mais adiados.
 - **Widget**, **tema claro, escuro ou automático** e **cópia de segurança** em JSON.

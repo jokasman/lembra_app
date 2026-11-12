@@ -29,6 +29,10 @@ public final class Prefs {
     public static boolean alarmDefault(Context c) { return sp(c).getBoolean("alarm_default", true); }
     public static void setAlarmDefault(Context c, boolean v) { sp(c).edit().putBoolean("alarm_default", v).apply(); }
 
+    /** Os lembretes novos já vêm marcados como importantes (modo insistente). */
+    public static boolean importantDefault(Context c) { return sp(c).getBoolean("important_default", true); }
+    public static void setImportantDefault(Context c, boolean v) { sp(c).edit().putBoolean("important_default", v).apply(); }
+
     /** Duração máxima do toque do despertador (min). */
     public static int ringMinutes(Context c) { return sp(c).getInt("ring_min", 5); }
     public static void setRingMinutes(Context c, int v) { sp(c).edit().putInt("ring_min", v).apply(); }

@@ -160,26 +160,11 @@ public class SettingsActivity extends BaseActivity {
         rel.addView(test, tlp);
         body.addView(rel);
 
-        // ---- Preferências
-        LinearLayout pref = Ui.card(this);
-        pref.addView(Ui.sectionLabel(this, "Preferências"));
-        pref.addView(Ui.optionRow(this, "Pausa de alarmes", quietPeriodText(), new View.OnClickListener() {
-            public void onClick(View v) { editQuietPeriod(); }
-        }));
-        pref.addView(Ui.optionRow(this, "Adiamento rápido na notificação", "+" + Fmt.duration(Prefs.quickSnooze(this)), new View.OnClickListener() {
-            public void onClick(View v) {
-                final int[] vals = {5, 10, 15, 30, 60};
-                choose("Adiamento rápido", vals, Prefs.quickSnooze(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setQuickSnooze(SettingsActivity.this, v); } });
-            }
-        }));
-        pref.addView(Ui.optionRow(this, "Intervalo do modo insistente", "Repete a cada " + Prefs.nagInterval(this) + " min", new View.OnClickListener() {
-            public void onClick(View v) {
-                final int[] vals = {2, 5, 10, 15, 30};
-                choose("Repetir a cada", vals, Prefs.nagInterval(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setNagInterval(SettingsActivity.this, v); } });
-            }
-        }));
+        // ---- Novos lembretes
+        LinearLayout novos = Ui.card(this);
+        novos.addView(Ui.sectionLabel(this, "Novos lembretes"));
         final int dt = Prefs.defaultTime(this);
-        pref.addView(Ui.optionRow(this, "Hora por defeito", "Usada quando só indica o dia (" + String.format(Locale.ROOT, "%02d:%02d", dt / 60, dt % 60) + ")", new View.OnClickListener() {
+        novos.addView(Ui.optionRow(this, "Hora por defeito", "Usada quando só indica o dia (" + String.format(Locale.ROOT, "%02d:%02d", dt / 60, dt % 60) + ")", new View.OnClickListener() {
             public void onClick(View v) {
                 new TimePickerDialog(SettingsActivity.this, new TimePickerDialog.OnTimeSetListener() {
                     public void onTimeSet(TimePicker tp, int h, int m) { Prefs.setDefaultTime(SettingsActivity.this, h * 60 + m); build(); }
@@ -187,46 +172,59 @@ public class SettingsActivity extends BaseActivity {
             }
         }));
         int pre = Prefs.defaultPreAlert(this);
-        pref.addView(Ui.optionRow(this, "Aviso antecipado por defeito", pre == 0 ? "Nenhum" : Fmt.duration(pre) + " antes", new View.OnClickListener() {
+        novos.addView(Ui.optionRow(this, "Aviso antecipado por defeito", pre == 0 ? "Nenhum" : Fmt.duration(pre) + " antes", new View.OnClickListener() {
             public void onClick(View v) {
                 choose("Aviso antecipado", EditActivity.PRE_VALUES, Prefs.defaultPreAlert(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setDefaultPreAlert(SettingsActivity.this, v); } });
             }
         }));
         final boolean ad = Prefs.alarmDefault(this);
-        pref.addView(Ui.optionRow(this, "Novos lembretes tocam como despertador", ad ? "Sim — som de alarme mesmo em silêncio" : "Não — notificação normal", new View.OnClickListener() {
+        novos.addView(Ui.optionRow(this, "Novos lembretes tocam como despertador", ad ? "Sim — som de alarme mesmo em silêncio" : "Não — notificação normal", new View.OnClickListener() {
             public void onClick(View v) { Prefs.setAlarmDefault(SettingsActivity.this, !ad); build(); }
         }));
-        final boolean da = Prefs.doneAuth(this);
-        pref.addView(Ui.optionRow(this, "Marcar como feito exige PIN ou impressão digital", da ? "Sim — cada lembrete pode dispensar" : "Não — cada lembrete pode exigir", new View.OnClickListener() {
-            public void onClick(View v) { toggleDoneAuth(da); }
+        final boolean idf = Prefs.importantDefault(this);
+        novos.addView(Ui.optionRow(this, "Novos lembretes são importantes", idf ? "Sim — insiste a cada " + Prefs.nagInterval(this) + " min até marcar como feito" : "Não — avisa uma vez", new View.OnClickListener() {
+            public void onClick(View v) { Prefs.setImportantDefault(SettingsActivity.this, !idf); build(); }
         }));
-        final boolean cp = Prefs.callPrompt(this);
-        pref.addView(Ui.optionRow(this, "Perguntar por lembrete depois das chamadas", cp ? "Sim — com opções de 10 min, 30 min, 1 hora e 4 horas" : "Não", new View.OnClickListener() {
-            public void onClick(View v) { toggleCallPrompt(cp); }
+        body.addView(novos);
+
+        // ---- Avisos e adiamento
+        LinearLayout avisos = Ui.card(this);
+        avisos.addView(Ui.sectionLabel(this, "Avisos e adiamento"));
+        avisos.addView(Ui.optionRow(this, "Pausa de alarmes", quietPeriodText(), new View.OnClickListener() {
+            public void onClick(View v) { editQuietPeriod(); }
         }));
-        if (cp) {
-            pref.addView(Ui.optionRow(this, "Em que chamadas perguntar", callMaskText(Prefs.callPromptMask(this)), new View.OnClickListener() {
-                public void onClick(View v) { pickCallMask(); }
-            }));
-        }
-        pref.addView(Ui.optionRow(this, "Categorias", Categories.all().size() + " categorias · criar, mudar nome e cor, reordenar", new View.OnClickListener() {
-            public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, CategoriesActivity.class)); }
-        }));
-        final int th = Prefs.theme(this);
-        final String[] themes = {"Automático (segue o telemóvel)", "Claro", "Escuro"};
-        pref.addView(Ui.optionRow(this, "Tema", themes[th], new View.OnClickListener() {
+        avisos.addView(Ui.optionRow(this, "Adiamento rápido na notificação", "+" + Fmt.duration(Prefs.quickSnooze(this)), new View.OnClickListener() {
             public void onClick(View v) {
-                new AlertDialog.Builder(SettingsActivity.this).setTitle("Tema").setSingleChoiceItems(themes, th, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface d, int w) {
-                        d.dismiss();
-                        if (w != th) { Prefs.setTheme(SettingsActivity.this, w); recreate(); }
-                    }
+                final int[] vals = {5, 10, 15, 30, 60};
+                choose("Adiamento rápido", vals, Prefs.quickSnooze(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setQuickSnooze(SettingsActivity.this, v); } });
+            }
+        }));
+        avisos.addView(Ui.optionRow(this, "Intervalo do modo insistente", "Repete a cada " + Prefs.nagInterval(this) + " min", new View.OnClickListener() {
+            public void onClick(View v) {
+                final int[] vals = {2, 5, 10, 15, 30};
+                choose("Repetir a cada", vals, Prefs.nagInterval(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setNagInterval(SettingsActivity.this, v); } });
+            }
+        }));
+        final int tol = Prefs.conflictTolerance(this);
+        avisos.addView(Ui.optionRow(this, "Avisar lembretes coincidentes", tol < 0 ? "Não avisar" : tol == 0 ? "Quando têm a mesma hora" : "Quando estão a menos de " + tol + " min", new View.OnClickListener() {
+            public void onClick(View v) {
+                final int[] vals = {0, 5, 15, 30, -1};
+                final String[] labels = {"Mesma hora", "Até 5 min de diferença", "Até 15 min de diferença", "Até 30 min de diferença", "Não avisar"};
+                int sel = 0;
+                for (int i = 0; i < vals.length; i++) if (vals[i] == tol) sel = i;
+                new AlertDialog.Builder(SettingsActivity.this).setTitle("Lembretes coincidentes").setSingleChoiceItems(labels, sel, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { Prefs.setConflictTolerance(SettingsActivity.this, vals[w]); d.dismiss(); build(); }
                 }).show();
             }
         }));
-        pref.addView(volumeControl());
+        body.addView(avisos);
+
+        // ---- Despertador
+        LinearLayout desp = Ui.card(this);
+        desp.addView(Ui.sectionLabel(this, "Despertador"));
+        desp.addView(volumeControl());
         final boolean cr = Prefs.crescendo(this);
-        pref.addView(Ui.optionRow(this, "Aumentar o volume gradualmente", cr ? "Sim — começa baixo e sobe em ~20 s" : "Não — toca logo no volume escolhido", new View.OnClickListener() {
+        desp.addView(Ui.optionRow(this, "Aumentar o volume gradualmente", cr ? "Sim — começa baixo e sobe em ~20 s" : "Não — toca logo no volume escolhido", new View.OnClickListener() {
             public void onClick(View v) { Prefs.setCrescendo(SettingsActivity.this, !cr); build(); }
         }));
         String snd = "Alarme do sistema";
@@ -234,7 +232,7 @@ public class SettingsActivity extends BaseActivity {
             String u = Prefs.alarmSound(this);
             if (u != null) { android.media.Ringtone rt = android.media.RingtoneManager.getRingtone(this, Uri.parse(u)); if (rt != null) snd = rt.getTitle(this); }
         } catch (Exception ignored) { }
-        pref.addView(Ui.optionRow(this, "Som do despertador", snd, new View.OnClickListener() {
+        desp.addView(Ui.optionRow(this, "Som do despertador", snd, new View.OnClickListener() {
             public void onClick(View v) {
                 Intent i = new Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
                         .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM)
@@ -246,24 +244,55 @@ public class SettingsActivity extends BaseActivity {
                 startActivityForResult(i, REQ_SOUND);
             }
         }));
-        final int tol = Prefs.conflictTolerance(this);
-        pref.addView(Ui.optionRow(this, "Avisar lembretes coincidentes", tol < 0 ? "Não avisar" : tol == 0 ? "Quando têm a mesma hora" : "Quando estão a menos de " + tol + " min", new View.OnClickListener() {
-            public void onClick(View v) {
-                final int[] vals = {0, 5, 15, 30, -1};
-                final String[] labels = {"Mesma hora", "Até 5 min de diferença", "Até 15 min de diferença", "Até 30 min de diferença", "Não avisar"};
-                int sel = 0;
-                for (int i = 0; i < vals.length; i++) if (vals[i] == tol) sel = i;
-                new AlertDialog.Builder(SettingsActivity.this).setTitle("Lembretes coincidentes").setSingleChoiceItems(labels, sel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface d, int w) { Prefs.setConflictTolerance(SettingsActivity.this, vals[w]); d.dismiss(); build(); }
-                }).show();
-            }
-        }));
-        pref.addView(Ui.optionRow(this, "Som e vibração", "Configurar nas definições do sistema", new View.OnClickListener() {
+        desp.addView(Ui.optionRow(this, "Som e vibração", "Configurar nas definições do sistema", new View.OnClickListener() {
             public void onClick(View v) {
                 startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
             }
         }));
-        body.addView(pref);
+        body.addView(desp);
+
+        // ---- Segurança
+        LinearLayout seg = Ui.card(this);
+        seg.addView(Ui.sectionLabel(this, "Segurança"));
+        final boolean da = Prefs.doneAuth(this);
+        seg.addView(Ui.optionRow(this, "Marcar como feito exige PIN ou impressão digital", da ? "Sim — cada lembrete pode dispensar" : "Não — cada lembrete pode exigir", new View.OnClickListener() {
+            public void onClick(View v) { toggleDoneAuth(da); }
+        }));
+        body.addView(seg);
+
+        // ---- Depois das chamadas
+        LinearLayout cham = Ui.card(this);
+        cham.addView(Ui.sectionLabel(this, "Depois das chamadas"));
+        final boolean cp = Prefs.callPrompt(this);
+        cham.addView(Ui.optionRow(this, "Perguntar por lembrete depois das chamadas", cp ? "Sim — com opções de 10 min, 30 min, 1 hora e 4 horas" : "Não", new View.OnClickListener() {
+            public void onClick(View v) { toggleCallPrompt(cp); }
+        }));
+        if (cp) {
+            cham.addView(Ui.optionRow(this, "Em que chamadas perguntar", callMaskText(Prefs.callPromptMask(this)), new View.OnClickListener() {
+                public void onClick(View v) { pickCallMask(); }
+            }));
+        }
+        body.addView(cham);
+
+        // ---- Aspeto e organização
+        LinearLayout aspeto = Ui.card(this);
+        aspeto.addView(Ui.sectionLabel(this, "Aspeto e organização"));
+        final int th = Prefs.theme(this);
+        final String[] themes = {"Automático (segue o telemóvel)", "Claro", "Escuro"};
+        aspeto.addView(Ui.optionRow(this, "Tema", themes[th], new View.OnClickListener() {
+            public void onClick(View v) {
+                new AlertDialog.Builder(SettingsActivity.this).setTitle("Tema").setSingleChoiceItems(themes, th, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        d.dismiss();
+                        if (w != th) { Prefs.setTheme(SettingsActivity.this, w); recreate(); }
+                    }
+                }).show();
+            }
+        }));
+        aspeto.addView(Ui.optionRow(this, "Categorias", Categories.all().size() + " categorias · criar, mudar nome e cor, reordenar", new View.OnClickListener() {
+            public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, CategoriesActivity.class)); }
+        }));
+        body.addView(aspeto);
 
         // ---- Backup
         LinearLayout bk = Ui.card(this);

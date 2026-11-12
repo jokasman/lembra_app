@@ -171,6 +171,7 @@ public class CallPromptActivity extends BaseActivity {
         r.dueAt = now + minutes * 60000L;
         r.preAlertMin = 0; // prazos curtos: sem aviso antecipado
         r.alarm = Prefs.alarmDefault(this);
+        r.important = Prefs.importantDefault(this);
         Engine.save(this, r);
         Toast.makeText(this, "Lembrete para " + Fmt.dayTime(r.dueAt, now).toLowerCase(), Toast.LENGTH_SHORT).show();
         finish();
