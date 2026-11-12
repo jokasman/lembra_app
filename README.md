@@ -11,12 +11,15 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Ecrã do despertador**: o conteúdo e as checklists grandes deslizam sem ocultar os botões de ação.
 - **Relógio Wear OS**: recebe uma notificação do alarme com ações para adiar pelo intervalo rápido configurado ou parar marcando o lembrete como feito.
 - **Pausa de alarmes**: define uma única janela com data e hora de início e fim; os despertadores vencidos durante a pausa tocam em fila depois do fim.
+- **Marcar como feito com PIN ou impressão digital**: opção geral nas definições, que cada lembrete pode contrariar (exigir sempre ou nunca exigir). Com a exigência ativa, o botão "Feito" das notificações pede a autenticação no telemóvel e o relógio deixa de ter o botão "Parar".
+- **Lembrete depois das chamadas**: ao terminar uma chamada, pergunta se quer agendar um lembrete para daqui a 10 min, 30 min, 1 hora ou 4 horas, já com o nome ou o número de quem ligou. Escolhe-se nas definições se pergunta nas chamadas atendidas ou feitas, rejeitadas e perdidas. Vem desligado por defeito.
 - **Nada fica esquecido**: ao desbloquear o telemóvel aparece o ecrã "Por tratar".
 - **Lembretes por localização**: avisa ao chegar ou ao sair de um local guardado. Usa só o Android, sem serviços Google.
 - **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.
 - **Fotos e anexos**: tirar uma foto ou anexar ficheiros.
 - **Calendário mensal** com filtro por categoria.
-- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes.
+- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes. Os lembretes novos já vêm marcados como importantes; muda-se nas definições.
+- **Definições agrupadas** por tema: novos lembretes, avisos e adiamento, despertador, segurança, chamadas, aspeto e cópia de segurança.
 - **Categorias**: criar, mudar nome e cor, reordenar.
 - **Estatísticas e histórico**: concluídos, adiamentos, taxa de cumprimento e os lembretes mais adiados.
 - **Widget**, **tema claro, escuro ou automático** e **cópia de segurança** em JSON.
@@ -69,7 +72,7 @@ Os secrets só são usados pelos jobs de build assinado; o job que cria a Releas
 ```bash
 mkdir -p build/test
 javac -d build/test src/pt/lembra/core/*.java test/*.java
-for t in ParserTest OccTest CatTest LocTest CheckTest; do java -cp build/test $t; done
+for t in ParserTest OccTest CatTest LocTest CheckTest CallTest; do java -cp build/test $t; done
 ```
 
 ## Dados

@@ -491,6 +491,7 @@ public class MainActivity extends BaseActivity {
         Reminder r = p.toReminder();
         r.preAlertMin = Prefs.defaultPreAlert(this);
         r.alarm = Prefs.alarmDefault(this);
+        r.important = r.important || Prefs.importantDefault(this);
         Engine.save(this, r);
         quick.setText("");
         long now = System.currentTimeMillis();
@@ -536,6 +537,7 @@ public class MainActivity extends BaseActivity {
         if (parsed.dueAt == null) r.dueAt = now + 60 * 60 * 1000L;
         r.preAlertMin = Prefs.defaultPreAlert(this);
         r.alarm = Prefs.alarmDefault(this);
+        r.important = r.important || Prefs.importantDefault(this);
         Engine.save(this, r);
         Toast.makeText(this, "Nota guardada · " + Fmt.dayTime(r.effectiveTime(), now), Toast.LENGTH_LONG).show();
     }
@@ -590,7 +592,14 @@ public class MainActivity extends BaseActivity {
         pm.show();
     }
 
-    private void complete(Reminder r) {
+    private void complete(final Reminder r) {
+        if (Auth.needed(this, r)) {
+            Auth.require(this, r.title, new Runnable() { public void run() { completeNow(r); } },
+                    new Runnable() { public void run() { refresh(); } });
+        } else completeNow(r);
+    }
+
+    private void completeNow(Reminder r) {
         Reminder snap = r.copy();
         Engine.complete(this, r);
         Reminder after = Db.get(this).get(r.id);

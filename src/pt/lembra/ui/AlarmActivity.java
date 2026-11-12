@@ -163,10 +163,15 @@ public class AlarmActivity extends BaseActivity {
             root.addView(bigButton("Parar", 0xFFFFFFFF, 0xFF0E1016, new View.OnClickListener() { public void onClick(View v) { AlarmService.stop(null); finish(); } }));
         } else {
             root.addView(bigButton("Feito", 0xFFFFFFFF, 0xFF0E1016, new View.OnClickListener() { public void onClick(View v) {
-                Reminder fresh = Db.get(AlarmActivity.this).get(id);
-                if (fresh != null) Engine.complete(AlarmActivity.this, fresh);
-                AlarmService.stop(null);
-                finish();
+                final Reminder fresh = Db.get(AlarmActivity.this).get(id);
+                Runnable done = new Runnable() { public void run() {
+                    if (fresh != null) Engine.complete(AlarmActivity.this, fresh);
+                    AlarmService.stop(null);
+                    finish();
+                } };
+                // O alarme continua a tocar até a autenticação ser confirmada.
+                if (Auth.needed(AlarmActivity.this, fresh)) Auth.require(AlarmActivity.this, fresh.title, done);
+                else done.run();
             } }));
             LinearLayout row = new LinearLayout(this);
             row.setPadding(0, dp(12), 0, 0);

@@ -6,6 +6,7 @@ import android.content.Intent;
 
 import pt.lembra.core.Reminder;
 import pt.lembra.data.Db;
+import pt.lembra.data.Prefs;
 
 /** Recebe alarmes e ações das notificações. */
 public class AlarmReceiver extends BroadcastReceiver {
@@ -63,6 +64,11 @@ public class AlarmReceiver extends BroadcastReceiver {
                 }
                 break;
             case Engine.A_DONE:
+                if (r.needsDoneAuth(Prefs.doneAuth(ctx))) {
+                    // Botão de uma notificação antiga, ou do relógio: a conclusão exige autenticação no telemóvel.
+                    try { ctx.startActivity(pt.lembra.ui.DoneActivity.intent(ctx, r.id)); } catch (Exception e) { /* sem permissão para abrir */ }
+                    break;
+                }
                 Engine.complete(ctx, r);
                 break;
             case Engine.A_SNOOZE: {
