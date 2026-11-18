@@ -15,7 +15,7 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Lembrete depois das chamadas**: ao terminar uma chamada, pergunta se quer agendar um lembrete para daqui a 10 min, 30 min, 1 hora ou 4 horas, já com o nome ou o número de quem ligou. Escolhe-se nas definições se pergunta nas chamadas atendidas ou feitas, rejeitadas e perdidas. Vem desligado por defeito.
 - **Nada fica esquecido**: ao desbloquear o telemóvel aparece o ecrã "Por tratar".
 - **Lembretes por localização**: avisa ao chegar ou ao sair de um local guardado. Usa só o Android, sem serviços Google.
-- **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.
+- **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto. Remover um item só o marca a cinza (pode repô-lo); é apagado ao guardar o lembrete, depois de uma confirmação com a lista dos itens a apagar.
 - **Fotos e anexos**: tirar uma foto ou anexar ficheiros.
 - **Calendário mensal** com filtro por categoria.
 - **Aviso de lembretes coincidentes** e **modo insistente** para os importantes. Os lembretes novos já vêm marcados como importantes; muda-se nas definições.

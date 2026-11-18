@@ -56,6 +56,9 @@ public class EditActivity extends BaseActivity {
 
     // Checklist e anexos
     private final List<Db.Sub> subs = new ArrayList<Db.Sub>();
+    /** Itens marcados para apagar: ficam a cinza e só desaparecem ao guardar. */
+    private final java.util.Set<Db.Sub> subsRemoved = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Db.Sub, Boolean>());
+    private boolean subRemovalConfirmed;
     private LinearLayout subList;
     private EditText subInput;
     private final List<Db.Att> atts = new ArrayList<Db.Att>();
@@ -654,6 +657,11 @@ public class EditActivity extends BaseActivity {
             titleE.requestFocus();
             return;
         }
+        // Itens da checklist marcados para apagar: confirmar antes de os apagar de vez.
+        if (!subsRemoved.isEmpty() && !subRemovalConfirmed) {
+            confirmSubRemoval();
+            return;
+        }
         // Retirar a exigência de autenticação a um lembrete que a tinha também exige autenticação.
         boolean global = Prefs.doneAuth(this);
         if (!isNew && !authConfirmed && original.needsDoneAuth(global) && !r.needsDoneAuth(global)) {
@@ -721,8 +729,30 @@ public class EditActivity extends BaseActivity {
         c.setBackground(Ui.ripple(this, Ui.round(Ui.col(this, sel ? R.color.accent : R.color.chip), dp(18)), dp(18)));
     }
 
+    private void confirmSubRemoval() {
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (Db.Sub s : subs) {
+            if (!subsRemoved.contains(s)) continue;
+            if (n++ < 8) sb.append("\n• ").append(s.text);
+        }
+        if (n > 8) sb.append("\n… e mais ").append(n - 8);
+        String head = n == 1 ? "Este item vai ser apagado da checklist:" : "Estes " + n + " itens vão ser apagados da checklist:";
+        new AlertDialog.Builder(this).setTitle("Apagar itens da checklist?")
+                .setMessage(head + "\n" + sb)
+                .setPositiveButton("Apagar e guardar", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { subRemovalConfirmed = true; save(); }
+                })
+                .setNeutralButton("Manter os itens", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { subsRemoved.clear(); renderSubs(); subRemovalConfirmed = true; save(); }
+                })
+                .setNegativeButton("Voltar", null).show();
+    }
+
     private void saveExtras() {
-        Db.get(this).saveSubtasks(r.id, subs);
+        List<Db.Sub> kept = new ArrayList<Db.Sub>();
+        for (Db.Sub s : subs) if (!subsRemoved.contains(s)) kept.add(s);
+        Db.get(this).saveSubtasks(r.id, kept);
         Db.get(this).saveAttachments(r.id, atts);
         Engine.changed(this);
     }
@@ -778,14 +808,17 @@ public class EditActivity extends BaseActivity {
     private void renderSubs() {
         if (subList == null) return;
         subList.removeAllViews();
-        int done = 0;
-        for (Db.Sub s : subs) if (s.done) done++;
+        int done = 0, kept = 0;
+        for (Db.Sub s : subs) if (!subsRemoved.contains(s)) { kept++; if (s.done) done++; }
         if (!subs.isEmpty()) {
-            TextView prog = Ui.text(this, done + " de " + subs.size() + " feitos", 13, R.color.text2, false);
+            String progText = done + " de " + kept + " feitos";
+            if (!subsRemoved.isEmpty()) progText += " · " + subsRemoved.size() + (subsRemoved.size() == 1 ? " item será apagado" : " itens serão apagados") + " ao guardar";
+            TextView prog = Ui.text(this, progText, 13, R.color.text2, false);
             prog.setPadding(dp(2), 0, 0, dp(6));
             subList.addView(prog);
         }
         for (final Db.Sub s : subs) {
+            final boolean removed = subsRemoved.contains(s);
             final LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setMinimumHeight(dp(44));
@@ -806,12 +839,33 @@ public class EditActivity extends BaseActivity {
             blp.setMarginEnd(dp(12));
             row.addView(box, blp);
             TextView t = Ui.text(this, s.text, 15, R.color.text, false);
-            if (s.done) { t.setAlpha(0.55f); t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG); }
-            row.addView(t, Ui.lpWeight(1));
-            ImageView del = Ui.iconButton(this, R.drawable.ic_close, "Remover item", new View.OnClickListener() { public void onClick(View v) { subs.remove(s); renderSubs(); } });
-            del.setAlpha(0.6f);
-            row.addView(del);
-            row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { s.done = !s.done; renderSubs(); } });
+            if (s.done && !removed) { t.setAlpha(0.55f); t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG); }
+            if (removed) {
+                // Marcado para apagar: tudo a cinza, com o aviso por baixo do texto.
+                LinearLayout texts = new LinearLayout(this);
+                texts.setOrientation(LinearLayout.VERTICAL);
+                t.setTextColor(Ui.col(this, R.color.text2));
+                t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+                texts.addView(t);
+                texts.addView(Ui.text(this, "Será apagado ao guardar", 12, R.color.text2, false));
+                texts.setAlpha(0.6f);
+                row.addView(texts, Ui.lpWeight(1));
+                handle.setAlpha(0.4f);
+                box.setAlpha(0.4f);
+                row.setBackground(Ui.ripple(this, Ui.round(Ui.col(this, R.color.chip), dp(10)), dp(10)));
+                TextView undo = Ui.text(this, "REPOR", 13, R.color.accent, true);
+                undo.setPadding(dp(12), dp(12), dp(12), dp(12));
+                undo.setContentDescription("Repor item");
+                undo.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { subsRemoved.remove(s); renderSubs(); } });
+                row.addView(undo);
+                row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { subsRemoved.remove(s); renderSubs(); } });
+            } else {
+                row.addView(t, Ui.lpWeight(1));
+                ImageView del = Ui.iconButton(this, R.drawable.ic_close, "Marcar item para apagar", new View.OnClickListener() { public void onClick(View v) { markSubRemoved(s); } });
+                del.setAlpha(0.6f);
+                row.addView(del);
+                row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { s.done = !s.done; renderSubs(); } });
+            }
             row.setOnLongClickListener(new View.OnLongClickListener() { public boolean onLongClick(View v) { subMenu(s); return true; } });
             subList.addView(row, Ui.lpMW());
         }
@@ -875,10 +929,17 @@ public class EditActivity extends BaseActivity {
         while (p != null) { p.requestDisallowInterceptTouchEvent(disallow); p = p.getParent(); }
     }
 
+    private void markSubRemoved(Db.Sub s) {
+        subsRemoved.add(s);
+        subRemovalConfirmed = false;
+        renderSubs();
+    }
+
     /** Toque longo num item: mover, editar texto ou remover. */
     private void subMenu(final Db.Sub s) {
         final int i = subs.indexOf(s);
-        String[] items = {"Mover para o topo", "Subir", "Descer", "Mover para o fim", "Editar texto", "Remover"};
+        String[] items = {"Mover para o topo", "Subir", "Descer", "Mover para o fim", "Editar texto",
+                subsRemoved.contains(s) ? "Repor" : "Marcar para apagar"};
         new AlertDialog.Builder(this).setTitle(s.text).setItems(items, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface d, int w) {
                 switch (w) {
@@ -901,7 +962,7 @@ public class EditActivity extends BaseActivity {
                                 .setNegativeButton("Cancelar", null).show();
                         return;
                     }
-                    case 5: subs.remove(s); break;
+                    case 5: if (!subsRemoved.remove(s)) { markSubRemoved(s); return; } break;
                 }
                 renderSubs();
             }
