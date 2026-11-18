@@ -8,6 +8,11 @@ on:
         type: boolean
         required: false
         default: false
+      release:
+        description: Publicar uma Release com o APK assinado (versão do AndroidManifest.xml)
+        type: boolean
+        required: false
+        default: false
   push:
     branches: [main]
     tags: ['v*']
@@ -17,7 +22,7 @@ permissions:
 
 jobs:
   preview:
-    if: (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.signed != true)) && !startsWith(github.ref, 'refs/tags/v')
+    if: (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.signed != true)) && !startsWith(github.ref, 'refs/tags/v') && inputs.release != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,7 +48,7 @@ jobs:
           if-no-files-found: error
 
   signed-preview:
-    if: (github.event_name == 'workflow_dispatch' && inputs.signed == true) || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[signed-apk]'))
+    if: (github.event_name == 'workflow_dispatch' && inputs.signed == true && inputs.release != true) || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[signed-apk]'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -87,7 +92,7 @@ jobs:
         run: rm -f release.jks
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release == true)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -102,6 +107,15 @@ jobs:
       - name: Instalar Android SDK (build-tools e plataforma)
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0" "platforms;android-35" > /dev/null
+
+      - name: Testes da lógica
+        run: |
+          mkdir -p build/test
+          javac -encoding UTF-8 -d build/test src/pt/lembra/core/*.java test/*.java
+          for t in ParserTest OccTest CatTest LocTest CheckTest CallTest PauseTest; do
+            java -cp build/test "$t" | tee build/test/out.txt
+            grep -q "ALL PASS" build/test/out.txt
+          done
 
       - name: Repor a chave de assinatura
         env:
@@ -131,12 +145,14 @@ jobs:
         run: rm -f release.jks
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.release == true)
     needs: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: Lembra-apk-release
@@ -146,8 +162,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp build/Lembra.apk "Lembra-${GITHUB_REF_NAME}.apk"
-          gh release create "$GITHUB_REF_NAME" "Lembra-${GITHUB_REF_NAME}.apk" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Lembra $GITHUB_REF_NAME" \
-            --generate-notes
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="v$(grep -o 'android:versionName="[^"]*"' AndroidManifest.xml | cut -d'"' -f2)"
+          fi
+          # Lembra.apk dá um link fixo para a versão mais recente: releases/latest/download/Lembra.apk
+          cp build/Lembra.apk "Lembra-${TAG}.apk"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" build/Lembra.apk "Lembra-${TAG}.apk" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" build/Lembra.apk "Lembra-${TAG}.apk" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Lembra $TAG" \
+              --latest \
+              --generate-notes
+          fi

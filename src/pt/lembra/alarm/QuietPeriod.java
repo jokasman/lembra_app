@@ -42,6 +42,7 @@ public final class QuietPeriod {
             AlarmService.deferForQuiet();
         }
         else if (wasActive) releaseOverdue(ctx, oldEnd);
+        Engine.changed(ctx);
     }
 
     public static void clear(Context ctx) {
@@ -51,6 +52,7 @@ public final class QuietPeriod {
         cancelBoundary(ctx, A_END, PI_END);
         Prefs.clearQuietPeriod(ctx);
         if (wasActive) releaseOverdue(ctx, oldEnd);
+        Engine.changed(ctx);
     }
 
     /** Reinstala os limites após reinício, atualização ou mudança do relógio. */
@@ -71,6 +73,7 @@ public final class QuietPeriod {
     static void onStart(Context ctx) {
         if (isActive(ctx)) AlarmService.deferForQuiet();
         else reschedule(ctx);
+        Engine.changed(ctx); // widget e ecrãs passam a mostrar a pausa
     }
 
     static void onEnd(Context ctx) {
@@ -81,6 +84,7 @@ public final class QuietPeriod {
             Prefs.clearQuietPeriod(ctx);
             releaseOverdue(ctx, end);
         } else reschedule(ctx);
+        Engine.changed(ctx);
     }
 
     private static void rescheduleBoundaries(Context ctx, long start, long end) {

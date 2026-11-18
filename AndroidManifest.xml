@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="pt.lembra"
-    android:versionCode="19" android:versionName="2.4.1">
+    android:versionCode="20" android:versionName="2.5.0">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
@@ -51,6 +51,7 @@
         </service>
         <activity android:name=".ui.PendingActivity" android:exported="false" android:launchMode="singleTop"
             android:taskAffinity="" android:excludeFromRecents="true"/>
+        <activity android:name=".ui.PauseActivity" android:exported="false"/>
         <activity android:name=".ui.DoneActivity" android:exported="false" android:theme="@style/DialogTheme"
             android:taskAffinity="" android:excludeFromRecents="true" android:launchMode="singleInstance"/>
         <activity android:name=".ui.CallPromptActivity" android:exported="false" android:theme="@style/DialogTheme"

@@ -47,6 +47,7 @@ import pt.lembra.alarm.Engine;
 import pt.lembra.alarm.Notifier;
 import pt.lembra.core.Categories;
 import pt.lembra.core.Fmt;
+import pt.lembra.core.PauseWindow;
 import pt.lembra.core.QuickParser;
 import pt.lembra.core.Recurrence;
 import pt.lembra.core.Reminder;
@@ -62,7 +63,9 @@ public class MainActivity extends BaseActivity {
     private Adapter adapter;
     private EditText quick, search;
     private TextView preview, title, subtitle, undoText, emptyText;
-    private LinearLayout chips, banner, undoBar, emptyView;
+    private LinearLayout chips, banner, undoBar, emptyView, pauseBanner;
+    private ImageView pauseBtn, pauseIcon;
+    private TextView pauseText, pauseAction;
     private int filter = F_ALL;
     private List<Reminder> allCache = new ArrayList<Reminder>();
     private java.util.Map<Long, int[]> subProgress = new java.util.HashMap<Long, int[]>();
@@ -155,6 +158,10 @@ public class MainActivity extends BaseActivity {
         search.addTextChangedListener(new SimpleWatcher() { public void afterTextChanged(Editable e) { query = e.toString(); refresh(); } });
         titles.addView(search);
         header.addView(titles, Ui.lpWeight(1));
+        pauseBtn = Ui.iconButton(this, R.drawable.ic_pause, "Pausar lembretes", new View.OnClickListener() {
+            public void onClick(View v) { startActivity(new Intent(MainActivity.this, PauseActivity.class)); }
+        });
+        header.addView(pauseBtn);
         header.addView(Ui.iconButton(this, R.drawable.ic_calendar, "Calendário", new View.OnClickListener() {
             public void onClick(View v) { startActivity(new Intent(MainActivity.this, CalendarActivity.class)); }
         }));
@@ -165,6 +172,25 @@ public class MainActivity extends BaseActivity {
         more.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showMenu(more); } });
         header.addView(more);
         col.addView(header);
+
+        // Aviso de pausa
+        pauseBanner = new LinearLayout(this);
+        pauseBanner.setGravity(Gravity.CENTER_VERTICAL);
+        pauseBanner.setPadding(dp(12), dp(10), dp(10), dp(10));
+        pauseIcon = Ui.icon(this, R.drawable.ic_pause, R.color.pause, 28, 2);
+        LinearLayout.LayoutParams pilp = new LinearLayout.LayoutParams(dp(28), dp(28));
+        pilp.setMarginEnd(dp(10));
+        pauseBanner.addView(pauseIcon, pilp);
+        pauseText = Ui.text(this, "", 14, R.color.pause, true);
+        pauseBanner.addView(pauseText, Ui.lpWeight(1));
+        pauseAction = Ui.text(this, "", 14, R.color.pause, true);
+        pauseAction.setPadding(dp(10), dp(6), dp(6), dp(6));
+        pauseBanner.addView(pauseAction);
+        pauseBanner.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { startActivity(new Intent(MainActivity.this, PauseActivity.class)); } });
+        pauseBanner.setVisibility(View.GONE);
+        LinearLayout.LayoutParams pblp = Ui.lpMW();
+        pblp.setMargins(dp(16), dp(6), dp(16), dp(2));
+        col.addView(pauseBanner, pblp);
 
         // Aviso de fiabilidade
         banner = new LinearLayout(this);
@@ -241,7 +267,7 @@ public class MainActivity extends BaseActivity {
         list.setDivider(null);
         list.setSelector(android.R.color.transparent);
         list.setClipToPadding(false);
-        list.setPadding(0, 0, 0, dp(96));
+        list.setPadding(0, 0, 0, dp(80));
         adapter = new Adapter();
         list.setAdapter(adapter);
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -272,16 +298,6 @@ public class MainActivity extends BaseActivity {
         emptyView.addView(emptyText);
         listFrame.addView(emptyView, new FrameLayout.LayoutParams(-1, -2));
         col.addView(listFrame, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        // FAB
-        ImageView fab = Ui.icon(this, R.drawable.ic_add, R.color.onAccent, 60, 16);
-        fab.setBackground(Ui.ripple(this, Ui.round(Ui.col(this, R.color.accent), dp(20)), dp(20)));
-        fab.setElevation(dp(6));
-        fab.setContentDescription("Novo lembrete");
-        fab.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { openEditor(0); } });
-        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(dp(60), dp(60), Gravity.BOTTOM | Gravity.END);
-        flp.setMargins(0, 0, dp(20), dp(24));
-        root.addView(fab, flp);
 
         // Barra de anular
         undoBar = new LinearLayout(this);
@@ -370,6 +386,35 @@ public class MainActivity extends BaseActivity {
                     public void onClick(DialogInterface d, int w) { for (Reminder r : done) Engine.delete(MainActivity.this, r); }
                 })
                 .setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Mostra se os lembretes estão em pausa: botão colorido no cabeçalho e faixa por baixo. */
+    private void updatePause(long now) {
+        long qs = Prefs.quietStart(this), qe = Prefs.quietEnd(this);
+        int st = PauseWindow.state(qs, qe, now);
+        int pause = Ui.col(this, R.color.pause);
+        if (st == PauseWindow.ACTIVE) {
+            pauseBtn.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.col(this, R.color.onAccent)));
+            GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL); g.setColor(pause);
+            pauseBtn.setBackground(Ui.ripple(this, g, dp(22)));
+            pauseBtn.setContentDescription("Lembretes em pausa");
+            pauseBanner.setBackground(Ui.stroke(Ui.col(this, R.color.pauseSoft), pause, Math.max(1, dp(1.5f)), dp(14)));
+            pauseText.setText("Lembretes em pausa até " + Fmt.dayTime(qe, now).toLowerCase());
+            pauseAction.setText("ALTERAR");
+            pauseBanner.setVisibility(View.VISIBLE);
+            title.setTextColor(pause);
+        } else {
+            pauseBtn.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.col(this, st == PauseWindow.SCHEDULED ? R.color.pause : R.color.text)));
+            pauseBtn.setBackground(Ui.ripple(this, null, dp(22)));
+            pauseBtn.setContentDescription("Pausar lembretes");
+            title.setTextColor(Ui.col(this, R.color.text));
+            if (st == PauseWindow.SCHEDULED) {
+                pauseBanner.setBackground(Ui.round(Ui.col(this, R.color.pauseSoft), dp(14)));
+                pauseText.setText("Pausa programada: " + Fmt.dayTime(qs, now).toLowerCase() + " – " + Fmt.dayTime(qe, now).toLowerCase());
+                pauseAction.setText("VER");
+                pauseBanner.setVisibility(View.VISIBLE);
+            } else pauseBanner.setVisibility(View.GONE);
+        }
     }
 
     private void updateBanner() {
@@ -636,6 +681,7 @@ public class MainActivity extends BaseActivity {
     private void refresh() {
         long now = System.currentTimeMillis();
         subtitle.setText(Fmt.dateLong(now));
+        updatePause(now);
         List<Reminder> all = Db.get(this).all();
         allCache = all;
         subProgress = Db.get(this).subtaskProgress();
@@ -710,7 +756,7 @@ public class MainActivity extends BaseActivity {
         if (empty) {
             if (!q.isEmpty()) emptyText.setText("Nenhum lembrete encontrado para \"" + query.trim() + "\".");
             else if (filter == F_DONE) emptyText.setText("Ainda não concluiu nenhum lembrete.");
-            else if (filter == F_ALL) emptyText.setText("Tudo em dia!\nEscreva um lembrete na caixa acima ou toque em +.");
+            else if (filter == F_ALL) emptyText.setText("Tudo em dia!\nEscreva um lembrete na caixa acima.");
             else emptyText.setText("Nada por aqui.");
         }
         updateBanner();
