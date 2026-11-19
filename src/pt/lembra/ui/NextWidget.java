@@ -17,8 +17,10 @@ import java.util.List;
 import pt.lembra.R;
 import pt.lembra.core.Categories;
 import pt.lembra.core.Fmt;
+import pt.lembra.core.PauseWindow;
 import pt.lembra.core.Reminder;
 import pt.lembra.data.Db;
+import pt.lembra.data.Prefs;
 
 /** Widget do ecrã inicial com os próximos lembretes. */
 public class NextWidget extends AppWidgetProvider {
@@ -60,6 +62,15 @@ public class NextWidget extends AppWidgetProvider {
                 v.setViewVisibility(ROWS[i], View.GONE);
             }
         }
+        // Pausa: fundo e faixa na cor da pausa.
+        long qs = Prefs.quietStart(ctx), qe = Prefs.quietEnd(ctx);
+        int st = PauseWindow.state(qs, qe, now);
+        v.setInt(R.id.root, "setBackgroundResource", st == PauseWindow.ACTIVE ? R.drawable.widget_bg_paused : R.drawable.widget_bg);
+        v.setViewVisibility(R.id.paused, st == PauseWindow.NONE ? View.GONE : View.VISIBLE);
+        if (st == PauseWindow.ACTIVE) v.setTextViewText(R.id.paused, "⏸ Em pausa até " + Fmt.dayTime(qe, now).toLowerCase());
+        else if (st == PauseWindow.SCHEDULED) v.setTextViewText(R.id.paused, "⏸ Pausa às " + Fmt.dayTime(qs, now).toLowerCase());
+        Intent pauseI = new Intent(ctx, PauseActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        v.setOnClickPendingIntent(R.id.paused, PendingIntent.getActivity(ctx, 4003, pauseI, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         Intent open = new Intent(ctx, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         v.setOnClickPendingIntent(R.id.header, PendingIntent.getActivity(ctx, 4000, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         v.setOnClickPendingIntent(R.id.empty, PendingIntent.getActivity(ctx, 4000, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));

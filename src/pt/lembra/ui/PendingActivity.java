@@ -100,8 +100,11 @@ public class PendingActivity extends BaseActivity {
             TextView done = Ui.button(this, "Feito", true);
             done.setPadding(dp(8), dp(10), dp(8), dp(10));
             done.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
-                Reminder f = Db.get(PendingActivity.this).get(r.id);
-                if (f != null) Engine.complete(PendingActivity.this, f);
+                final Reminder f = Db.get(PendingActivity.this).get(r.id);
+                if (f == null) return;
+                Runnable done = new Runnable() { public void run() { Engine.complete(PendingActivity.this, f); } };
+                if (Auth.needed(PendingActivity.this, f)) Auth.require(PendingActivity.this, f.title, done);
+                else done.run();
             } });
             LinearLayout.LayoutParams lp1 = Ui.lpWeight(1); lp1.setMarginEnd(dp(8));
             actions.addView(done, lp1);

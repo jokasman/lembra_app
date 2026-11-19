@@ -24,7 +24,8 @@ public final class Notifier {
     private Notifier() {}
 
     static final String CH_MAIN = "lembretes", CH_IMP = "importantes", CH_PRE = "avisos", CH_ALARM_SOUND = "alarme_som",
-            CH_WATCH_ALARM = "despertador_relogio";
+            CH_WATCH_ALARM = "despertador_relogio", CH_CALLS = "chamadas";
+    private static final int CALL_PROMPT_ID = 888_001;
     private static int watchAlarmId(long id) { return 0x60000000 | ((int) id & 0x0FFFFFFF); }
 
     /** Som de alarme incluído na app (funciona sempre, sem depender do som do sistema). */
@@ -67,6 +68,29 @@ public final class Notifier {
         watch.enableVibration(false);
         watch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         nm.createNotificationChannel(watch);
+        NotificationChannel calls = new NotificationChannel(CH_CALLS, "Depois das chamadas", NotificationManager.IMPORTANCE_HIGH);
+        calls.setDescription("Pergunta se quer agendar um lembrete quando uma chamada termina");
+        calls.setSound(null, null);
+        nm.createNotificationChannel(calls);
+    }
+
+    /** Pergunta "Agendar lembrete?" em notificação, quando a janela não pode abrir sozinha. */
+    public static void showCallPrompt(Context ctx, PendingIntent open, String kind, String title) {
+        ensureChannels(ctx);
+        Notification n = new Notification.Builder(ctx, CH_CALLS)
+                .setSmallIcon(R.drawable.ic_notif)
+                .setContentTitle("Agendar lembrete?")
+                .setContentText(kind + " · " + title)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .setTimeoutAfter(60000)
+                .build();
+        ctx.getSystemService(NotificationManager.class).notify(CALL_PROMPT_ID, n);
+    }
+
+    public static void cancelCallPrompt(Context ctx) {
+        ctx.getSystemService(NotificationManager.class).cancel(CALL_PROMPT_ID);
     }
 
     static int mainId(long id) { return (int) (id * 2); }
@@ -88,7 +112,7 @@ public final class Notifier {
         PendingIntent openPi = PendingIntent.getActivity(ctx, 777_004, open,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         String body = "Alarme a tocar · " + Fmt.time(r.effectiveTime());
-        Notification n = new Notification.Builder(ctx, CH_WATCH_ALARM)
+        Notification.Builder b = new Notification.Builder(ctx, CH_WATCH_ALARM)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(Categories.color(r.category))
                 .setContentTitle("⏰ " + r.title)
@@ -102,11 +126,13 @@ public final class Notifier {
                 .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .addAction(new Notification.Action.Builder(null, "Adiar " + Fmt.duration(quick),
-                        action(ctx, Engine.A_SNOOZE, r.id, 1, quick)).build())
-                .addAction(new Notification.Action.Builder(null, "Parar",
-                        action(ctx, Engine.A_DONE, r.id, 0, 0)).build())
-                .build();
-        ctx.getSystemService(NotificationManager.class).notify(watchAlarmId(r.id), n);
+                        action(ctx, Engine.A_SNOOZE, r.id, 1, quick)).build());
+        // O relógio não consegue pedir o PIN nem a impressão digital do telemóvel: sem "Parar" nesses lembretes.
+        if (!r.needsDoneAuth(Prefs.doneAuth(ctx))) {
+            b.addAction(new Notification.Action.Builder(null, "Parar",
+                    action(ctx, Engine.A_DONE, r.id, 0, 0)).build());
+        }
+        ctx.getSystemService(NotificationManager.class).notify(watchAlarmId(r.id), b.build());
     }
 
     public static void cancelWatchAlarm(Context ctx, long id) {
@@ -122,6 +148,13 @@ public final class Notifier {
     static PendingIntent action(Context ctx, String action, long id, int code, int minutes) {
         Intent i = new Intent(ctx, AlarmReceiver.class).setAction(action).putExtra("id", id).putExtra("min", minutes);
         return PendingIntent.getBroadcast(ctx, (int) (id * 8 + code) + 1_000_000, i,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    /** Ação "Feito": direta, ou através do pedido de PIN/impressão digital quando o lembrete o exige. */
+    public static PendingIntent doneAction(Context ctx, Reminder r) {
+        if (r == null || !r.needsDoneAuth(Prefs.doneAuth(ctx))) return action(ctx, Engine.A_DONE, r == null ? 0 : r.id, 0, 0);
+        return PendingIntent.getActivity(ctx, (int) (r.id * 8 + 4) + 2_000_000, pt.lembra.ui.DoneActivity.intent(ctx, r.id),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
@@ -156,7 +189,7 @@ public final class Notifier {
                 .setOngoing(r.important)
                 .setOnlyAlertOnce(false)
                 .setVisibility(Notification.VISIBILITY_PRIVATE)
-                .addAction(new Notification.Action.Builder(null, "Feito", action(ctx, Engine.A_DONE, r.id, 0, 0)).build())
+                .addAction(new Notification.Action.Builder(null, "Feito", doneAction(ctx, r)).build())
                 .addAction(new Notification.Action.Builder(null, "+" + Fmt.duration(quick), action(ctx, Engine.A_SNOOZE, r.id, 1, quick)).build())
                 .addAction(new Notification.Action.Builder(null, "Adiar…", snoozePi).build());
         Notification built = b.build();
@@ -176,7 +209,7 @@ public final class Notifier {
                 .setContentIntent(openIntent(ctx, r.id))
                 .setAutoCancel(true)
                 .setTimeoutAfter(Math.max(60000, eff - System.currentTimeMillis()))
-                .addAction(new Notification.Action.Builder(null, "Já está feito", action(ctx, Engine.A_DONE, r.id, 0, 0)).build());
+                .addAction(new Notification.Action.Builder(null, "Já está feito", doneAction(ctx, r)).build());
         ctx.getSystemService(NotificationManager.class).notify(preId(r.id), b.build());
     }
 

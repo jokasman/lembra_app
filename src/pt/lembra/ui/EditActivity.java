@@ -46,7 +46,7 @@ public class EditActivity extends BaseActivity {
     private Reminder r;
     private Reminder original;
     private boolean isNew;
-    private boolean conflictConfirmed;
+    private boolean conflictConfirmed, authConfirmed;
 
     // Local
     private LinearLayout timePanel, locPanel, repeatCard;
@@ -56,6 +56,9 @@ public class EditActivity extends BaseActivity {
 
     // Checklist e anexos
     private final List<Db.Sub> subs = new ArrayList<Db.Sub>();
+    /** Itens marcados para apagar: ficam a cinza e só desaparecem ao guardar. */
+    private final java.util.Set<Db.Sub> subsRemoved = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Db.Sub, Boolean>());
+    private boolean subRemovalConfirmed;
     private LinearLayout subList;
     private EditText subInput;
     private final List<Db.Att> atts = new ArrayList<Db.Att>();
@@ -64,7 +67,7 @@ public class EditActivity extends BaseActivity {
     private LocalDateTime when;
 
     private EditText titleE, notesE, intervalE, endCountE;
-    private TextView dateBtn, timeBtn, repeatBtn, endBtn, preBtn, endDateBtn, unitBtn, snoozeInfo, summary;
+    private TextView dateBtn, timeBtn, repeatBtn, endBtn, preBtn, authBtn, endDateBtn, unitBtn, snoozeInfo, summary;
     private LinearLayout weekRow, customRow, endRow, catRow, snoozeRow, endDetail;
     private Switch importantSw, alarmSw;
     private TextView[] dayToggles = new TextView[7];
@@ -86,6 +89,7 @@ public class EditActivity extends BaseActivity {
             r = new Reminder();
             r.preAlertMin = Prefs.defaultPreAlert(this);
             r.alarm = Prefs.alarmDefault(this);
+            r.important = Prefs.importantDefault(this);
             String pre = getIntent().getStringExtra("prefill");
             int def = Prefs.defaultTime(this);
             if (pre != null && !pre.trim().isEmpty()) {
@@ -93,6 +97,7 @@ public class EditActivity extends BaseActivity {
                 Reminder pr = p.toReminder();
                 pr.preAlertMin = r.preAlertMin;
                 pr.alarm = r.alarm;
+                pr.important = pr.important || r.important;
                 r = pr;
                 if (p.dueAt == null) r.dueAt = 0;
             }
@@ -318,6 +323,11 @@ public class EditActivity extends BaseActivity {
         c4.addView(Ui.divider(this));
         importantSw = new Switch(this);
         c4.addView(switchRow("★ Importante · modo insistente", "Volta a avisar a cada " + Prefs.nagInterval(this) + " min até marcar como feito.", importantSw));
+        c4.addView(Ui.divider(this));
+        c4.addView(Ui.subLabel(this, "Marcar como feito"));
+        authBtn = field(R.drawable.ic_check);
+        authBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { pickAuth(); } });
+        c4.addView(authBtn);
         body.addView(c4);
 
         // Categoria
@@ -391,7 +401,15 @@ public class EditActivity extends BaseActivity {
             TextView doneB = Ui.button(this, r.done ? "Reativar" : "Marcar como feito", false);
             doneB.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
                 if (r.done) Engine.uncomplete(EditActivity.this, Db.get(EditActivity.this).get(r.id));
-                else Engine.complete(EditActivity.this, Db.get(EditActivity.this).get(r.id));
+                else {
+                    final Reminder cur = Db.get(EditActivity.this).get(r.id);
+                    if (cur == null) { finish(); return; }
+                    Runnable done = new Runnable() { public void run() { Engine.complete(EditActivity.this, cur); finish(); } };
+                    // Vale o que está guardado, não o que foi alterado no ecrã sem guardar.
+                    if (Auth.needed(EditActivity.this, cur)) Auth.require(EditActivity.this, cur.title, done);
+                    else done.run();
+                    return;
+                }
                 finish();
             } });
             LinearLayout.LayoutParams alp = Ui.lpWeight(1); alp.setMarginEnd(dp(8));
@@ -505,6 +523,7 @@ public class EditActivity extends BaseActivity {
             endDateBtn.setText("Até " + Fmt.dateShort(r.endDate));
         }
         preBtn.setText(r.preAlertMin == 0 ? "Sem aviso antecipado" : Fmt.duration(r.preAlertMin) + " antes");
+        authBtn.setText(authLabels()[r.doneAuth]);
         catRow.removeAllViews();
         for (final Categories.Cat ct : Categories.all()) {
             TextView chip = Ui.chip(this, ct.name, r.category == ct.id, ct.color);
@@ -611,6 +630,17 @@ public class EditActivity extends BaseActivity {
         }).show();
     }
 
+    private String[] authLabels() {
+        return new String[]{"Segue as definições (" + (Prefs.doneAuth(this) ? "exige" : "não exige") + ")",
+                "Exige PIN ou impressão digital", "Não exige autenticação"};
+    }
+
+    private void pickAuth() {
+        new AlertDialog.Builder(this).setTitle("Marcar como feito").setSingleChoiceItems(authLabels(), r.doneAuth, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface d, int which) { r.doneAuth = which; d.dismiss(); bindAll(); }
+        }).show();
+    }
+
     private void confirmDelete() {
         new AlertDialog.Builder(this).setMessage("Apagar este lembrete?")
                 .setPositiveButton("Apagar", new DialogInterface.OnClickListener() {
@@ -625,6 +655,17 @@ public class EditActivity extends BaseActivity {
         if (title.isEmpty()) {
             titleE.setError("Escreva o lembrete");
             titleE.requestFocus();
+            return;
+        }
+        // Itens da checklist marcados para apagar: confirmar antes de os apagar de vez.
+        if (!subsRemoved.isEmpty() && !subRemovalConfirmed) {
+            confirmSubRemoval();
+            return;
+        }
+        // Retirar a exigência de autenticação a um lembrete que a tinha também exige autenticação.
+        boolean global = Prefs.doneAuth(this);
+        if (!isNew && !authConfirmed && original.needsDoneAuth(global) && !r.needsDoneAuth(global)) {
+            Auth.require(this, "Retirar a autenticação", new Runnable() { public void run() { authConfirmed = true; save(); } });
             return;
         }
         r.title = title;
@@ -688,8 +729,30 @@ public class EditActivity extends BaseActivity {
         c.setBackground(Ui.ripple(this, Ui.round(Ui.col(this, sel ? R.color.accent : R.color.chip), dp(18)), dp(18)));
     }
 
+    private void confirmSubRemoval() {
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (Db.Sub s : subs) {
+            if (!subsRemoved.contains(s)) continue;
+            if (n++ < 8) sb.append("\n• ").append(s.text);
+        }
+        if (n > 8) sb.append("\n… e mais ").append(n - 8);
+        String head = n == 1 ? "Este item vai ser apagado da checklist:" : "Estes " + n + " itens vão ser apagados da checklist:";
+        new AlertDialog.Builder(this).setTitle("Apagar itens da checklist?")
+                .setMessage(head + "\n" + sb)
+                .setPositiveButton("Apagar e guardar", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { subRemovalConfirmed = true; save(); }
+                })
+                .setNeutralButton("Manter os itens", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) { subsRemoved.clear(); renderSubs(); subRemovalConfirmed = true; save(); }
+                })
+                .setNegativeButton("Voltar", null).show();
+    }
+
     private void saveExtras() {
-        Db.get(this).saveSubtasks(r.id, subs);
+        List<Db.Sub> kept = new ArrayList<Db.Sub>();
+        for (Db.Sub s : subs) if (!subsRemoved.contains(s)) kept.add(s);
+        Db.get(this).saveSubtasks(r.id, kept);
         Db.get(this).saveAttachments(r.id, atts);
         Engine.changed(this);
     }
@@ -745,14 +808,17 @@ public class EditActivity extends BaseActivity {
     private void renderSubs() {
         if (subList == null) return;
         subList.removeAllViews();
-        int done = 0;
-        for (Db.Sub s : subs) if (s.done) done++;
+        int done = 0, kept = 0;
+        for (Db.Sub s : subs) if (!subsRemoved.contains(s)) { kept++; if (s.done) done++; }
         if (!subs.isEmpty()) {
-            TextView prog = Ui.text(this, done + " de " + subs.size() + " feitos", 13, R.color.text2, false);
+            String progText = done + " de " + kept + " feitos";
+            if (!subsRemoved.isEmpty()) progText += " · " + subsRemoved.size() + (subsRemoved.size() == 1 ? " item será apagado" : " itens serão apagados") + " ao guardar";
+            TextView prog = Ui.text(this, progText, 13, R.color.text2, false);
             prog.setPadding(dp(2), 0, 0, dp(6));
             subList.addView(prog);
         }
         for (final Db.Sub s : subs) {
+            final boolean removed = subsRemoved.contains(s);
             final LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setMinimumHeight(dp(44));
@@ -773,12 +839,33 @@ public class EditActivity extends BaseActivity {
             blp.setMarginEnd(dp(12));
             row.addView(box, blp);
             TextView t = Ui.text(this, s.text, 15, R.color.text, false);
-            if (s.done) { t.setAlpha(0.55f); t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG); }
-            row.addView(t, Ui.lpWeight(1));
-            ImageView del = Ui.iconButton(this, R.drawable.ic_close, "Remover item", new View.OnClickListener() { public void onClick(View v) { subs.remove(s); renderSubs(); } });
-            del.setAlpha(0.6f);
-            row.addView(del);
-            row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { s.done = !s.done; renderSubs(); } });
+            if (s.done && !removed) { t.setAlpha(0.55f); t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG); }
+            if (removed) {
+                // Marcado para apagar: tudo a cinza, com o aviso por baixo do texto.
+                LinearLayout texts = new LinearLayout(this);
+                texts.setOrientation(LinearLayout.VERTICAL);
+                t.setTextColor(Ui.col(this, R.color.text2));
+                t.setPaintFlags(t.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+                texts.addView(t);
+                texts.addView(Ui.text(this, "Será apagado ao guardar", 12, R.color.text2, false));
+                texts.setAlpha(0.6f);
+                row.addView(texts, Ui.lpWeight(1));
+                handle.setAlpha(0.4f);
+                box.setAlpha(0.4f);
+                row.setBackground(Ui.ripple(this, Ui.round(Ui.col(this, R.color.chip), dp(10)), dp(10)));
+                TextView undo = Ui.text(this, "REPOR", 13, R.color.accent, true);
+                undo.setPadding(dp(12), dp(12), dp(12), dp(12));
+                undo.setContentDescription("Repor item");
+                undo.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { subsRemoved.remove(s); renderSubs(); } });
+                row.addView(undo);
+                row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { subsRemoved.remove(s); renderSubs(); } });
+            } else {
+                row.addView(t, Ui.lpWeight(1));
+                ImageView del = Ui.iconButton(this, R.drawable.ic_close, "Marcar item para apagar", new View.OnClickListener() { public void onClick(View v) { markSubRemoved(s); } });
+                del.setAlpha(0.6f);
+                row.addView(del);
+                row.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { s.done = !s.done; renderSubs(); } });
+            }
             row.setOnLongClickListener(new View.OnLongClickListener() { public boolean onLongClick(View v) { subMenu(s); return true; } });
             subList.addView(row, Ui.lpMW());
         }
@@ -842,10 +929,17 @@ public class EditActivity extends BaseActivity {
         while (p != null) { p.requestDisallowInterceptTouchEvent(disallow); p = p.getParent(); }
     }
 
+    private void markSubRemoved(Db.Sub s) {
+        subsRemoved.add(s);
+        subRemovalConfirmed = false;
+        renderSubs();
+    }
+
     /** Toque longo num item: mover, editar texto ou remover. */
     private void subMenu(final Db.Sub s) {
         final int i = subs.indexOf(s);
-        String[] items = {"Mover para o topo", "Subir", "Descer", "Mover para o fim", "Editar texto", "Remover"};
+        String[] items = {"Mover para o topo", "Subir", "Descer", "Mover para o fim", "Editar texto",
+                subsRemoved.contains(s) ? "Repor" : "Marcar para apagar"};
         new AlertDialog.Builder(this).setTitle(s.text).setItems(items, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface d, int w) {
                 switch (w) {
@@ -868,7 +962,7 @@ public class EditActivity extends BaseActivity {
                                 .setNegativeButton("Cancelar", null).show();
                         return;
                     }
-                    case 5: subs.remove(s); break;
+                    case 5: if (!subsRemoved.remove(s)) { markSubRemoved(s); return; } break;
                 }
                 renderSubs();
             }

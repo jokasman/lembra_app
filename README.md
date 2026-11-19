@@ -10,13 +10,16 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Despertador**: toca com som de alarme mesmo em silêncio, em ecrã inteiro, com volume próprio que vai aumentando. Só pára quando marca como feito ou adia.
 - **Ecrã do despertador**: o conteúdo e as checklists grandes deslizam sem ocultar os botões de ação.
 - **Relógio Wear OS**: recebe uma notificação do alarme com ações para adiar pelo intervalo rápido configurado ou parar marcando o lembrete como feito.
-- **Pausa de alarmes**: define uma única janela com data e hora de início e fim; os despertadores vencidos durante a pausa tocam em fila depois do fim.
+- **Pausar lembretes**: botão no ecrã principal (ao lado do calendário) que abre um ecrã com atalhos de 1 a 24 horas a contar de agora e com o início e o fim (data e hora) sempre visíveis e editáveis. Os despertadores vencidos durante a pausa tocam em fila depois do fim. Enquanto a pausa dura, o ecrã principal e o widget ficam assinalados a laranja.
+- **Marcar como feito com PIN ou impressão digital**: opção geral nas definições, que cada lembrete pode contrariar (exigir sempre ou nunca exigir). Com a exigência ativa, o botão "Feito" das notificações pede a autenticação no telemóvel e o relógio deixa de ter o botão "Parar".
+- **Lembrete depois das chamadas**: ao terminar uma chamada, pergunta se quer agendar um lembrete para daqui a 10 min, 30 min, 1 hora ou 4 horas, já com o nome ou o número de quem ligou. Escolhe-se nas definições se pergunta nas chamadas atendidas ou feitas, rejeitadas e perdidas. Vem desligado por defeito.
 - **Nada fica esquecido**: ao desbloquear o telemóvel aparece o ecrã "Por tratar".
 - **Lembretes por localização**: avisa ao chegar ou ao sair de um local guardado. Usa só o Android, sem serviços Google.
-- **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto.
+- **Checklist dentro de cada lembrete**: os itens podem ser reordenados e é possível colar uma lista de texto. Remover um item só o marca a cinza (pode repô-lo); é apagado ao guardar o lembrete, depois de uma confirmação com a lista dos itens a apagar.
 - **Fotos e anexos**: tirar uma foto ou anexar ficheiros.
 - **Calendário mensal** com filtro por categoria.
-- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes.
+- **Aviso de lembretes coincidentes** e **modo insistente** para os importantes. Os lembretes novos já vêm marcados como importantes; muda-se nas definições.
+- **Definições agrupadas** por tema: novos lembretes, avisos e adiamento, despertador, segurança, chamadas, aspeto e cópia de segurança.
 - **Categorias**: criar, mudar nome e cor, reordenar.
 - **Estatísticas e histórico**: concluídos, adiamentos, taxa de cumprimento e os lembretes mais adiados.
 - **Widget**, **tema claro, escuro ou automático** e **cópia de segurança** em JSON.
@@ -53,6 +56,8 @@ cp /caminho/seguro/release.jks .   # a chave de assinatura (não está no reposi
 
 O workflow `.github/workflows/build.yml` gera um APK de preview sem assinatura nos pushes para `main` e nas execuções manuais normais. Para obter um APK assinado sem criar uma Release, execute manualmente o workflow em **Actions → Build Android APK → Run workflow** e marque a opção **Gerar um APK assinado**. Também é possível iniciar esse build num push para `main` incluindo `[signed-apk]` na mensagem do commit. O APK aparece como artefacto `Lembra-apk-assinado`. Uma tag `v*` (por exemplo `v2.3.2`) continua a gerar um APK assinado e a criar uma Release.
 
+Para publicar uma Release a partir do botão, marque **Publicar uma Release** em **Run workflow**: usa a versão do `AndroidManifest.xml` como tag. O APK fica anexado à Release e o link direto para a versão mais recente é sempre https://github.com/jokasman/lembra_app/releases/latest/download/Lembra.apk
+
 Para compilar uma Release, crie estes *Repository secrets* em **Settings → Secrets and variables → Actions**:
 
 | Secret | Valor |
@@ -69,7 +74,7 @@ Os secrets só são usados pelos jobs de build assinado; o job que cria a Releas
 ```bash
 mkdir -p build/test
 javac -d build/test src/pt/lembra/core/*.java test/*.java
-for t in ParserTest OccTest CatTest LocTest CheckTest; do java -cp build/test $t; done
+for t in ParserTest OccTest CatTest LocTest CheckTest CallTest PauseTest; do java -cp build/test $t; done
 ```
 
 ## Dados

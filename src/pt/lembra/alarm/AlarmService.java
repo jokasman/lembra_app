@@ -389,7 +389,7 @@ public class AlarmService extends Service {
                 .setDeleteIntent(repostIntent());
         if (id != TEST_ID) {
             int quick = Prefs.quickSnooze(this);
-            b.addAction(new Notification.Action.Builder(null, "Feito", Notifier.action(this, Engine.A_DONE, id, 0, 0)).build());
+            b.addAction(new Notification.Action.Builder(null, "Feito", Notifier.doneAction(this, r)).build());
             b.addAction(new Notification.Action.Builder(null, "+" + Fmt.duration(quick), Notifier.action(this, Engine.A_SNOOZE, id, 1, quick)).build());
         } else {
             b.addAction(new Notification.Action.Builder(null, "Parar", Notifier.action(this, Engine.A_STOP, id, 2, 0)).build());

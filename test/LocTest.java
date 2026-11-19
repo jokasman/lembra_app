@@ -8,5 +8,11 @@ public class LocTest { public static void main(String[] a){
   if(Occurrences.nextConflict(r,Arrays.asList(r,o),0)==null) f++;
   r.snoozedUntil=0; if(Occurrences.nextConflict(r,Arrays.asList(r,o),0)!=null) f++;
   Reminder c=r.copy(); if(c.locPlace!=5||c.locTrigger!=Reminder.LOC_ARRIVE) f++;
+  // Autenticação para marcar como feito: definição geral e exceção por lembrete.
+  Reminder d=new Reminder();
+  if(d.needsDoneAuth(false)||!d.needsDoneAuth(true)) f++;
+  d.doneAuth=Reminder.AUTH_ALWAYS; if(!d.needsDoneAuth(false)||!d.needsDoneAuth(true)) f++;
+  d.doneAuth=Reminder.AUTH_NEVER; if(d.needsDoneAuth(false)||d.needsDoneAuth(true)) f++;
+  if(d.copy().doneAuth!=Reminder.AUTH_NEVER) f++;
   System.out.println(f==0?"ALL PASS":"FAIL "+f);
 }}

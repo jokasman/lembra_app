@@ -13,4 +13,6 @@
     <color name="chip">#2A2E3A</color>
     <color name="warnSoft">#3A3020</color>
     <color name="warn">#FFC965</color>
+    <color name="pause">#FFA45C</color>
+    <color name="pauseSoft">#3D2614</color>
 </resources>
