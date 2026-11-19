@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import pt.lembra.R;
+import pt.lembra.alarm.Notifier;
 import pt.lembra.core.Categories;
 import pt.lembra.core.Fmt;
 import pt.lembra.core.PauseWindow;
@@ -28,6 +29,7 @@ public class NextWidget extends AppWidgetProvider {
     private static final int[] TITLES = {R.id.title0, R.id.title1, R.id.title2, R.id.title3};
     private static final int[] TIMES = {R.id.time0, R.id.time1, R.id.time2, R.id.time3};
     private static final int[] DOTS = {R.id.dot0, R.id.dot1, R.id.dot2, R.id.dot3};
+    private static final int[] DONES = {R.id.done0, R.id.done1, R.id.done2, R.id.done3};
 
     @Override public void onUpdate(Context ctx, AppWidgetManager m, int[] ids) { update(ctx, m, ids); }
 
@@ -58,6 +60,9 @@ public class NextWidget extends AppWidgetProvider {
                 Intent edit = new Intent(ctx, EditActivity.class).putExtra("id", r.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 v.setOnClickPendingIntent(ROWS[i], PendingIntent.getActivity(ctx, 5000 + (int) r.id, edit,
                         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+                // Marcar como feito: o mesmo que o botão "Feito" da notificação (pede PIN ou impressão digital se for exigido).
+                v.setOnClickPendingIntent(DONES[i], Notifier.doneAction(ctx, r));
+                v.setContentDescription(DONES[i], "Marcar como feito: " + r.title);
             } else {
                 v.setViewVisibility(ROWS[i], View.GONE);
             }

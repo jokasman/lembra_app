@@ -22,7 +22,7 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Definições agrupadas** por tema: novos lembretes, avisos e adiamento, despertador, segurança, chamadas, aspeto e cópia de segurança.
 - **Categorias**: criar, mudar nome e cor, reordenar.
 - **Estatísticas e histórico**: concluídos, adiamentos, taxa de cumprimento e os lembretes mais adiados.
-- **Widget**, **tema claro, escuro ou automático** e **cópia de segurança** em JSON.
+- **Widget** com botão para marcar cada lembrete como feito, **tema claro, escuro ou automático** e **cópia de segurança** em JSON.
 - **Verificação de fiabilidade**: confirma notificações, alarmes exatos e bateria, com dicas para Samsung e Xiaomi.
 
 ## Estrutura
