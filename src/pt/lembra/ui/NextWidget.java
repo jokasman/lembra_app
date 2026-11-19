@@ -28,7 +28,6 @@ public class NextWidget extends AppWidgetProvider {
     private static final int[] ROWS = {R.id.row0, R.id.row1, R.id.row2, R.id.row3};
     private static final int[] TITLES = {R.id.title0, R.id.title1, R.id.title2, R.id.title3};
     private static final int[] TIMES = {R.id.time0, R.id.time1, R.id.time2, R.id.time3};
-    private static final int[] DOTS = {R.id.dot0, R.id.dot1, R.id.dot2, R.id.dot3};
     private static final int[] DONES = {R.id.done0, R.id.done1, R.id.done2, R.id.done3};
 
     @Override public void onUpdate(Context ctx, AppWidgetManager m, int[] ids) { update(ctx, m, ids); }
@@ -56,7 +55,8 @@ public class NextWidget extends AppWidgetProvider {
                 v.setTextViewText(TITLES[i], (r.important ? "★ " : "") + r.title);
                 long eff = r.effectiveTime();
                 v.setTextViewText(TIMES[i], Fmt.dayTime(eff, now));
-                v.setTextColor(DOTS[i], eff < now ? 0xFFE53935 : Categories.color(r.category));
+                // Visto à esquerda, na cor que antes tinha o ponto: vermelho se atrasado, senão a cor da categoria.
+                v.setInt(DONES[i], "setColorFilter", eff < now ? 0xFFE53935 : Categories.color(r.category));
                 Intent edit = new Intent(ctx, EditActivity.class).putExtra("id", r.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 v.setOnClickPendingIntent(ROWS[i], PendingIntent.getActivity(ctx, 5000 + (int) r.id, edit,
                         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
