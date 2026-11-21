@@ -98,7 +98,8 @@ public final class Engine {
         long eff = r.effectiveTime();
         if (!r.notified) {
             setAlarm(ctx, Math.max(eff, now + 1000), pi(ctx, A_FIRE, r.id, T_MAIN, true));
-            if (r.preAlertMin > 0 && !r.preNotified && !r.isSnoozed()) {
+            // Notificação antes do alarme; depois de adiar, volta a ser dada antes da nova hora.
+            if (r.preAlertMin > 0 && !r.preNotified) {
                 long pre = eff - r.preAlertMin * 60000L;
                 if (pre > now) setAlarm(ctx, pre, pi(ctx, A_PRE, r.id, T_PRE, true));
             }
@@ -186,7 +187,7 @@ public final class Engine {
         Db.get(ctx).log(r, Db.H_SNOOZE);
         r.snoozedUntil = until;
         r.notified = false;
-        r.preNotified = true;
+        r.preNotified = false; // nova notificação antes da hora adiada
         Db.get(ctx).save(r);
         schedule(ctx, r);
         changed(ctx);

@@ -74,7 +74,7 @@ public class EditActivity extends BaseActivity {
 
     static final String[] REPEAT_LABELS = {"Não repete", "Todos os dias", "Dias úteis (seg–sex)", "Semanal…", "Todos os meses", "Todos os anos", "Personalizado…"};
     static final String[] END_LABELS = {"Nunca", "Numa data", "Após N vezes"};
-    static final int[] PRE_VALUES = {0, 5, 10, 15, 30, 60, 120, 1440};
+    static final int[] PRE_VALUES = {0, 1, 2, 5, 10, 15, 30, 60, 120, 1440};
     static final String[] UNIT_LABELS = {"horas", "dias", "semanas", "meses"};
 
     private int dp(float v) { return Ui.dp(this, v); }
@@ -313,7 +313,7 @@ public class EditActivity extends BaseActivity {
         // Avisos
         LinearLayout c4 = Ui.card(this);
         c4.addView(Ui.cardHeader(this, R.drawable.ic_bell, "Avisos"));
-        c4.addView(Ui.subLabel(this, "Aviso antecipado"));
+        c4.addView(Ui.subLabel(this, "Notificação antes do alarme"));
         preBtn = field(R.drawable.ic_clock);
         preBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { pickPre(); } });
         c4.addView(preBtn);
@@ -522,7 +522,7 @@ public class EditActivity extends BaseActivity {
             if (r.endDate == 0) r.endDate = ms + 30L * 86400000L;
             endDateBtn.setText("Até " + Fmt.dateShort(r.endDate));
         }
-        preBtn.setText(r.preAlertMin == 0 ? "Sem aviso antecipado" : Fmt.duration(r.preAlertMin) + " antes");
+        preBtn.setText(r.preAlertMin == 0 ? "Sem notificação antes" : "Notificação " + Fmt.duration(r.preAlertMin) + " antes · repete ao adiar");
         authBtn.setText(authLabels()[r.doneAuth]);
         catRow.removeAllViews();
         for (final Categories.Cat ct : Categories.all()) {
@@ -622,10 +622,10 @@ public class EditActivity extends BaseActivity {
         String[] labels = new String[PRE_VALUES.length];
         int sel = 0;
         for (int i = 0; i < PRE_VALUES.length; i++) {
-            labels[i] = PRE_VALUES[i] == 0 ? "Sem aviso" : Fmt.duration(PRE_VALUES[i]) + " antes";
+            labels[i] = PRE_VALUES[i] == 0 ? "Sem notificação antes" : Fmt.duration(PRE_VALUES[i]) + " antes";
             if (PRE_VALUES[i] == r.preAlertMin) sel = i;
         }
-        new AlertDialog.Builder(this).setTitle("Aviso antecipado").setSingleChoiceItems(labels, sel, new DialogInterface.OnClickListener() {
+        new AlertDialog.Builder(this).setTitle("Notificação antes do alarme").setSingleChoiceItems(labels, sel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface d, int which) { r.preAlertMin = PRE_VALUES[which]; d.dismiss(); bindAll(); }
         }).show();
     }

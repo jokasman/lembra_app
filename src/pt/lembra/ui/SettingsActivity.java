@@ -170,9 +170,9 @@ public class SettingsActivity extends BaseActivity {
             }
         }));
         int pre = Prefs.defaultPreAlert(this);
-        novos.addView(Ui.optionRow(this, "Aviso antecipado por defeito", pre == 0 ? "Nenhum" : Fmt.duration(pre) + " antes", new View.OnClickListener() {
+        novos.addView(Ui.optionRow(this, "Notificação antes do alarme", pre == 0 ? "Nenhuma" : Fmt.duration(pre) + " antes, e de novo antes de cada adiamento", new View.OnClickListener() {
             public void onClick(View v) {
-                choose("Aviso antecipado", EditActivity.PRE_VALUES, Prefs.defaultPreAlert(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setDefaultPreAlert(SettingsActivity.this, v); } });
+                choose("Notificação antes do alarme", EditActivity.PRE_VALUES, Prefs.defaultPreAlert(SettingsActivity.this), new Chosen() { public void on(int v) { Prefs.setDefaultPreAlert(SettingsActivity.this, v); } });
             }
         }));
         final boolean ad = Prefs.alarmDefault(this);

@@ -894,7 +894,7 @@ public class MainActivity extends BaseActivity {
                 if (r.isSnoozed()) m.append(" · adiado");
                 if (r.alarm) m.append(" · ⏰");
                 if (r.isRecurring()) m.append(" · ↻ ").append(Recurrence.describe(r));
-                if (r.preAlertMin > 0) m.append(" · aviso ").append(Fmt.duration(r.preAlertMin)).append(" antes");
+                if (r.preAlertMin > 0) m.append(" · notificação ").append(Fmt.duration(r.preAlertMin)).append(" antes");
                 meta.setTextColor(Ui.col(c, late ? R.color.danger : R.color.text2));
             }
             if (r.done) meta.setTextColor(Ui.col(c, R.color.text2));

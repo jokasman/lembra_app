@@ -48,8 +48,8 @@ public final class Notifier {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
         imp.enableLights(true);
         imp.setLightColor(0xFFFF5252);
-        NotificationChannel pre = new NotificationChannel(CH_PRE, "Avisos antecipados", NotificationManager.IMPORTANCE_DEFAULT);
-        pre.setDescription("Aviso alguns minutos antes do lembrete");
+        NotificationChannel pre = new NotificationChannel(CH_PRE, "Notificações antes do alarme", NotificationManager.IMPORTANCE_DEFAULT);
+        pre.setDescription("Notificação antes do alarme (por defeito 1 min antes), também depois de adiar");
         nm.createNotificationChannel(main);
         nm.createNotificationChannel(imp);
         nm.createNotificationChannel(pre);
@@ -204,7 +204,7 @@ public final class Notifier {
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(Categories.color(r.category))
                 .setContentTitle(r.title)
-                .setContentText("Daqui a " + Fmt.duration(r.preAlertMin) + " (" + Fmt.time(eff) + ")")
+                .setContentText((r.isSnoozed() ? "Adiado · toca daqui a " : "Daqui a ") + Fmt.duration(r.preAlertMin) + " (" + Fmt.time(eff) + ")")
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setContentIntent(openIntent(ctx, r.id))
                 .setAutoCancel(true)

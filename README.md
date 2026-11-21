@@ -8,6 +8,7 @@ App Android de lembretes, em português, simples e fiável: os lembretes tocam a
 - **Nota rápida por voz**: dite uma frase no microfone da entrada rápida ou do widget; usa a data e hora reconhecidas ou avisa dentro de uma hora por defeito.
 - **Data e hora, recorrência e adiar**: repete todos os dias, em dias úteis, todas as semanas (nos dias que escolher), todos os meses, todos os anos ou a cada N horas, dias, semanas ou meses. Pode terminar numa data ou ao fim de N vezes. Para adiar há opções rápidas (10 min, 1 h, esta noite, amanhã…) ou uma data e hora à escolha.
 - **Despertador**: toca com som de alarme mesmo em silêncio, em ecrã inteiro, com volume próprio que vai aumentando. Só pára quando marca como feito ou adia.
+- **Notificação antes do alarme**: por defeito chega 1 min antes, além da notificação na hora; em cada lembrete escolhe-se outro tempo ou nenhuma. Quando o lembrete é adiado, volta a chegar antes da nova hora.
 - **Ecrã do despertador**: o conteúdo e as checklists grandes deslizam sem ocultar os botões de ação.
 - **Relógio Wear OS**: recebe uma notificação do alarme com ações para adiar pelo intervalo rápido configurado ou parar marcando o lembrete como feito.
 - **Pausar lembretes**: botão no ecrã principal (ao lado do calendário) que abre um ecrã com atalhos de 1 a 24 horas a contar de agora e com o início e o fim (data e hora) sempre visíveis e editáveis. Os despertadores vencidos durante a pausa tocam em fila depois do fim. Enquanto a pausa dura, o ecrã principal e o widget ficam assinalados a laranja.

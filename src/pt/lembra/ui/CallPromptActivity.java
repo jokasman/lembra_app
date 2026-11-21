@@ -169,7 +169,7 @@ public class CallPromptActivity extends BaseActivity {
         Reminder r = new Reminder();
         r.title = title;
         r.dueAt = now + minutes * 60000L;
-        r.preAlertMin = 0; // prazos curtos: sem aviso antecipado
+        r.preAlertMin = Prefs.defaultPreAlert(this);
         r.alarm = Prefs.alarmDefault(this);
         r.important = Prefs.importantDefault(this);
         Engine.save(this, r);

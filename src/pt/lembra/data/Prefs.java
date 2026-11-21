@@ -19,7 +19,7 @@ public final class Prefs {
     public static int defaultTime(Context c) { return sp(c).getInt("default_time", 9 * 60); }
     public static void setDefaultTime(Context c, int v) { sp(c).edit().putInt("default_time", v).apply(); }
 
-    public static int defaultPreAlert(Context c) { return sp(c).getInt("default_pre", 0); }
+    public static int defaultPreAlert(Context c) { return sp(c).getInt("default_pre", 1); }
     public static void setDefaultPreAlert(Context c, int v) { sp(c).edit().putInt("default_pre", v).apply(); }
 
     /** Margem (min) para considerar dois lembretes coincidentes; -1 = não avisar. */
