@@ -41,7 +41,7 @@ import pt.lembra.data.Db;
  */
 public class SnoozeActivity extends BaseActivity {
     private Reminder r;
-    private boolean fromAlarm, applied;
+    private boolean fromAlarm, fromWidget, applied;
 
     // Seletor personalizado
     private LinearLayout customPanel, dateChips;
@@ -55,6 +55,7 @@ public class SnoozeActivity extends BaseActivity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         fromAlarm = getIntent().getBooleanExtra("fromAlarm", false);
+        fromWidget = getIntent().getBooleanExtra("fromWidget", false);
         if (fromAlarm) {
             if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
             else getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
@@ -104,13 +105,33 @@ public class SnoozeActivity extends BaseActivity {
         Ui.ellipsize(title, 2);
         ht.addView(title, Ui.lpMW());
         long now = System.currentTimeMillis();
-        TextView was = Ui.text(this, "Adiar · estava para " + Fmt.dayTime(r.effectiveTime(), now).toLowerCase(), 13, R.color.text2, false);
+        TextView was = Ui.text(this, (fromWidget ? "Marcado para " : "Adiar · estava para ") + Fmt.dayTime(r.effectiveTime(), now).toLowerCase(), 13, R.color.text2, false);
         ht.addView(was, Ui.lpMW());
         head.addView(ht, Ui.lpWeight(1));
         sheet.addView(head, Ui.lpMW());
 
+        // Aberto a partir do widget: ações do lembrete por cima das opções de adiar.
+        if (fromWidget) {
+            LinearLayout acts = new LinearLayout(this);
+            TextView done = Ui.button(this, "✓ Feito", true);
+            done.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { markDone(); } });
+            LinearLayout.LayoutParams dlp = Ui.lpWeight(1);
+            dlp.setMarginEnd(dp(8));
+            acts.addView(done, dlp);
+            TextView open = Ui.button(this, "Abrir lembrete", false);
+            open.setOnClickListener(new View.OnClickListener() { public void onClick(View v) {
+                startActivity(new android.content.Intent(SnoozeActivity.this, EditActivity.class).putExtra("id", r.id)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                finish();
+            } });
+            acts.addView(open, Ui.lpWeight(1));
+            LinearLayout.LayoutParams alp = Ui.lpMW();
+            alp.topMargin = dp(16);
+            sheet.addView(acts, alp);
+        }
+
         // Daqui a… (4 mosaicos grandes)
-        sheet.addView(label("Daqui a"));
+        sheet.addView(label(fromWidget ? "Adiar · daqui a" : "Daqui a"));
         LinearLayout tiles = new LinearLayout(this);
         int[] mins = {10, 30, 60, 180};
         String[] big = {"10", "30", "1", "3"};
@@ -323,6 +344,20 @@ public class SnoozeActivity extends BaseActivity {
             if (cur != null && !cur.done) AlarmService.resume(); else AlarmService.stop(null);
         }
         super.onDestroy();
+    }
+
+    private void markDone() {
+        final Reminder fresh = Db.get(this).get(r.id);
+        if (fresh == null || fresh.done) { finish(); return; }
+        Runnable done = new Runnable() { public void run() {
+            applied = true;
+            Engine.complete(SnoozeActivity.this, fresh);
+            Reminder after = Db.get(SnoozeActivity.this).get(fresh.id);
+            Toast.makeText(SnoozeActivity.this, after != null && !after.done
+                    ? "Feito · próximo: " + Fmt.dayTime(after.dueAt, System.currentTimeMillis()).toLowerCase() : "Concluído", Toast.LENGTH_SHORT).show();
+            finish();
+        } };
+        if (Auth.needed(this, fresh)) Auth.require(this, fresh.title, done); else done.run();
     }
 
     private void apply(long until) {

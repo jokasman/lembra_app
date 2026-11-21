@@ -28,6 +28,7 @@ public class NextWidget extends AppWidgetProvider {
     private static final int[] ROWS = {R.id.row0, R.id.row1, R.id.row2, R.id.row3};
     private static final int[] TITLES = {R.id.title0, R.id.title1, R.id.title2, R.id.title3};
     private static final int[] TIMES = {R.id.time0, R.id.time1, R.id.time2, R.id.time3};
+    private static final int[] DAYS = {R.id.day0, R.id.day1, R.id.day2, R.id.day3};
     private static final int[] DONES = {R.id.done0, R.id.done1, R.id.done2, R.id.done3};
 
     @Override public void onUpdate(Context ctx, AppWidgetManager m, int[] ids) { update(ctx, m, ids); }
@@ -48,23 +49,32 @@ public class NextWidget extends AppWidgetProvider {
         long now = System.currentTimeMillis();
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget);
         v.setViewVisibility(R.id.empty, pending.isEmpty() ? View.VISIBLE : View.GONE);
+        String lastDay = null;
         for (int i = 0; i < ROWS.length; i++) {
             if (i < pending.size()) {
                 Reminder r = pending.get(i);
+                // Agrupado por dia: o cabeçalho só aparece quando o dia muda; à direita fica só a hora.
+                String day = Fmt.cap(Fmt.day(r.effectiveTime(), now));
+                v.setViewVisibility(DAYS[i], day.equals(lastDay) ? View.GONE : View.VISIBLE);
+                v.setTextViewText(DAYS[i], day);
+                lastDay = day;
                 v.setViewVisibility(ROWS[i], View.VISIBLE);
                 v.setTextViewText(TITLES[i], (r.important ? "★ " : "") + r.title);
                 long eff = r.effectiveTime();
-                v.setTextViewText(TIMES[i], Fmt.dayTime(eff, now));
+                v.setTextViewText(TIMES[i], Fmt.time(eff));
                 // Visto à esquerda, na cor que antes tinha o ponto: vermelho se atrasado, senão a cor da categoria.
                 v.setInt(DONES[i], "setColorFilter", eff < now ? 0xFFE53935 : Categories.color(r.category));
-                Intent edit = new Intent(ctx, EditActivity.class).putExtra("id", r.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                v.setOnClickPendingIntent(ROWS[i], PendingIntent.getActivity(ctx, 5000 + (int) r.id, edit,
+                // Tocar no lembrete abre a folha de ações: adiar, marcar como feito ou abrir.
+                Intent actions = new Intent(ctx, SnoozeActivity.class).putExtra("id", r.id).putExtra("fromWidget", true)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                v.setOnClickPendingIntent(ROWS[i], PendingIntent.getActivity(ctx, 5000 + (int) r.id, actions,
                         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
                 // Marcar como feito: o mesmo que o botão "Feito" da notificação (pede PIN ou impressão digital se for exigido).
                 v.setOnClickPendingIntent(DONES[i], Notifier.doneAction(ctx, r));
                 v.setContentDescription(DONES[i], "Marcar como feito: " + r.title);
             } else {
                 v.setViewVisibility(ROWS[i], View.GONE);
+                v.setViewVisibility(DAYS[i], View.GONE);
             }
         }
         // Pausa: fundo e faixa na cor da pausa.
